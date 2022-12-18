@@ -1,6 +1,12 @@
 # ESP SSLClient
 
-The SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.
+The Upgradable SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.
+
+This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
+
+This library is reliable and stable SSL Client for ESP32 and ESP8266 that suitable for large data transmission via any low speed SPI Arduino Network Interface Client device.
+
+The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
 
 ## Basic Usage
 ```cpp
