@@ -1,0 +1,65 @@
+####################################
+# Syntax Coloring Map ESP_SSLClient
+####################################
+
+####################################
+# Classes (KEYWORD1)
+####################################
+
+ESP_SSLClient   KEYWORD1
+
+####################################
+# Methods and Functions (KEYWORD2)
+####################################
+
+setClient   KEYWORD2
+connect KEYWORD2
+available   KEYWORD2
+read    KEYWORD2
+write   KEYWORD2
+peek    KEYWORD2
+setInsecure KEYWORD2
+enableSSL   KEYWORD2
+connectSSL  KEYWORD2
+setTimeout  KEYWORD2
+flush   KEYWORD2
+setBufferSizes  KEYWORD2
+setPreSharedKey KEYWORD2
+setCACert   KEYWORD2
+setCertificate  KEYWORD2
+setPrivateKey   KEYWORD2
+loadCACert  KEYWORD2
+loadCertificate KEYWORD2
+loadPrivateKey  KEYWORD2
+verify  KEYWORD2
+setHandshakeTimeout KEYWORD2
+setTimeout  KEYWORD2
+stop    KEYWORD2
+availableForWrite   KEYWORD2
+setSession  KEYWORD2
+setKnownKey KEYWORD2
+setFingerprint  KEYWORD2
+allowSelfSignedCerts    KEYWORD2
+setTrustAnchors KEYWORD2
+setX509Time KEYWORD2
+setClientRSACert    KEYWORD2
+setClientECCert KEYWORD2
+getMFLNStatus   KEYWORD2
+getLastSSLError KEYWORD2
+setCertStore    KEYWORD2
+setCiphers  KEYWORD2
+setCiphersLessSecure    KEYWORD2
+setSSLVersion   KEYWORD2
+hasPeekBufferAPI    KEYWORD2
+peekAvailable   KEYWORD2
+peekBuffer  KEYWORD2
+peekConsume KEYWORD2
+
+####################################
+# Struct (KEYWORD3)
+####################################
+
+BearSSL_PublicKey   KEYWORD3
+BearSSL_X509List    KEYWORD3
+BearSSL_PrivateKey  KEYWORD3
+BearSSL_CertStoreBase   KEYWORD3
