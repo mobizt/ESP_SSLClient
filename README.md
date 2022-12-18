@@ -4,49 +4,55 @@ The SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g.,
 
 ## Basic Usage
 ```cpp
-  #include "ESP_SSLClient/esp32/MB_ESP32_SSLClient.h"
+  #include <Arduino.h>
+  #if defined(ESP32)
+  #include <WiFi.h>
+  #elif defined(ESP8266)
+  #include <ESP8266WiFi.h>
+  #endif
+  #include <ESP_SSLClient.h>
 
-  MB_ESP32_SSLClient sslClient;
-  EthernetClient basicClient;
+  ESP_SSLClient ssl_client;
+  EthernetClient basic_client;
   
   // ignore server ssl certificate verification
-  sslClient.setInsecure();
+  ssl_client.setInsecure();
   
   // assign the basic client
-  sslClient.setClient(&basicClient);
+  ssl_client.setClient(&basic_client);
 
   Serial.print("Connecting to server...");
 
   String payload = "{\"title\":\"hello\"}";
 
-  if (sslClient.connect("reqres.in", 443))
+  if (ssl_client.connect("reqres.in", 443))
   {
     Serial.println(" ok");
     Serial.println("Send POST request...");
-    sslClient.print("POST /api/users HTTP/1.1\n");
-    sslClient.print("Host: reqres.in\n");
-    sslClient.print("Content-Type: application/json\n");
-    sslClient.print("Content-Length: ");
-    sslClient.print(payload.length());
-    sslClient.print("\n\n");
-    sslClient.print(payload);
+    ssl_client.print("POST /api/users HTTP/1.1\n");
+    ssl_client.print("Host: reqres.in\n");
+    ssl_client.print("Content-Type: application/json\n");
+    ssl_client.print("Content-Length: ");
+    ssl_client.print(payload.length());
+    ssl_client.print("\n\n");
+    ssl_client.print(payload);
 
     Serial.print("Read response...");
 
-    while (!sslClient.available())
+    while (!ssl_client.available())
     {
     }
     Serial.println();
-    while (sslClient.available())
+    while (ssl_client.available())
     {
-      Serial.print((char)sslClient.read());
+      Serial.print((char)ssl_client.read());
     }
     Serial.println();
   }
   else
     Serial.println(" failed\n");
 
-  sslClient.stop();
+  ssl_client.stop();
 
 ```
 

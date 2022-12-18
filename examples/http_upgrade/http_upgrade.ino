@@ -11,6 +11,9 @@
 #define WIFI_PASSWORD "WIFI_PASSWORD"
 
 ESP_SSLClient ssl_client;
+
+// EthernetClient basic_client;
+// GSMClient basic_client;
 WiFiClient basic_client;
 
 void setup()
