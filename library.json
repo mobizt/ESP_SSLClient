@@ -1,6 +1,6 @@
 {
   "name": "ESP_SSLClient",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "keywords": "communication, REST, esp32, esp8266, arduino",
   "description": "The upgradable SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.",
   "repository": {
