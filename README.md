@@ -1,6 +1,6 @@
 # ESP SSLClient
 
-The Upgradable SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.
+The upgradable SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.
 
 This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
 
