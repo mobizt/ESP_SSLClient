@@ -1,6 +1,6 @@
 /**
  *
- * The Mobizt ESP8266 SSL Client Class, MB_ESP8266_SSLClient.cpp v1.0.1
+ * The Mobizt ESP8266 TCP Client Class, MB_ESP8266_TCPClient.cpp v1.0.1
  *
  * Created November 15, 2022
  *
@@ -26,8 +26,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MB_ESP8266_SSLCLIENT_CPP
-#define MB_ESP8266_SSLCLIENT_CPP
+#ifndef MB_ESP8266_TCPClient_CPP
+#define MB_ESP8266_TCPClient_CPP
 
 #ifdef ESP8266
 
@@ -35,28 +35,29 @@
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include "MB_ESP8266_SSLClient.h"
+#include "MB_ESP8266_TCPClient.h"
 #include <lwip/tcp.h>
 #include <include/ClientContext.h>
 
-MB_ESP8266_SSLClient::MB_ESP8266_SSLClient()
+MB_ESP8266_TCPClient::MB_ESP8266_TCPClient()
 {
 }
 
-MB_ESP8266_SSLClient::~MB_ESP8266_SSLClient()
+MB_ESP8266_TCPClient::~MB_ESP8266_TCPClient()
 {
   stop();
   WCS_CLASS::setClient(nullptr);
   _basic_client = nullptr;
 }
 
-void MB_ESP8266_SSLClient::setClient(Client *client)
+void MB_ESP8266_TCPClient::setClient(Client *client, bool enableSSL)
 {
   _basic_client = client;
   WCS_CLASS::setClient(client);
+  _isSSL = enableSSL;
 }
 
-int MB_ESP8266_SSLClient::connect(const char *name, uint16_t port)
+int MB_ESP8266_TCPClient::connect(const char *name, uint16_t port)
 {
 
   if (!_basic_client)
@@ -64,200 +65,207 @@ int MB_ESP8266_SSLClient::connect(const char *name, uint16_t port)
 
   _host = name;
 
-  if (!WCS_CLASS::connect(name, port))
+  if (!connected())
   {
-    WCS_CLASS::stop();
-    return 0;
+    if (!WCS_CLASS::connect(name, port))
+    {
+      WCS_CLASS::stop();
+      return 0;
+    }
   }
 
-  bool res = WCS_CLASS::_connectSSL(_host.c_str());
+  if (_isSSL && !connectSSL())
+    return 0;
 
-  if (!res)
-    WCS_CLASS::stop();
-
-  return res;
+  return 1;
 }
 
-int MB_ESP8266_SSLClient::connect(IPAddress ip, uint16_t port)
+int MB_ESP8266_TCPClient::connect(IPAddress ip, uint16_t port)
 {
   if (!_basic_client)
     return 0;
 
-  if (!WCS_CLASS::connect(ip, port))
+  if (!connected())
   {
-    WCS_CLASS::stop();
-    return 0;
+    if (!WCS_CLASS::connect(ip, port))
+    {
+      WCS_CLASS::stop();
+      return 0;
+    }
   }
 
-  bool res = WCS_CLASS::_connectSSL(nullptr);
+  if (_isSSL && !connectSSL())
+    return 0;
 
-  if (!res)
-    WCS_CLASS::stop();
-
-  return res;
+  return 1;
 }
 
-bool MB_ESP8266_SSLClient::connectSSL()
+bool MB_ESP8266_TCPClient::connectSSL()
 {
 
-  bool res = WCS_CLASS::_connectSSL(_host.c_str());
-
+  bool res = _host.length() ? WCS_CLASS::_connectSSL(_host.c_str()) : WCS_CLASS::_connectSSL(nullptr);
+  _isSSL = true;
   if (!res)
     WCS_CLASS::stop();
 
   return res;
 }
 
-uint8_t MB_ESP8266_SSLClient::connected()
+uint8_t MB_ESP8266_TCPClient::connected()
 {
   return WCS_CLASS::connected();
 }
 
-void MB_ESP8266_SSLClient::setTimeout(unsigned long timeout)
+void MB_ESP8266_TCPClient::setTimeout(unsigned long timeout)
 {
   WCS_CLASS::setTimeout(timeout);
 }
 
-void MB_ESP8266_SSLClient::stop()
+void MB_ESP8266_TCPClient::stop()
 {
   WCS_CLASS::stop();
 }
 
-int MB_ESP8266_SSLClient::available()
+int MB_ESP8266_TCPClient::available()
 {
   return WCS_CLASS::available();
 }
 
-int MB_ESP8266_SSLClient::read()
+int MB_ESP8266_TCPClient::read()
 {
   return WCS_CLASS::read();
 }
 
-int MB_ESP8266_SSLClient::read(uint8_t *buf, size_t size)
+int MB_ESP8266_TCPClient::read(uint8_t *buf, size_t size)
 {
   return WCS_CLASS::read(buf, size);
 }
 
-size_t MB_ESP8266_SSLClient::write(const uint8_t *buf, size_t size)
+size_t MB_ESP8266_TCPClient::write(const uint8_t *buf, size_t size)
 {
   return WCS_CLASS::write(buf, size);
 }
 
-int MB_ESP8266_SSLClient::peek()
+int MB_ESP8266_TCPClient::peek()
 {
   return WCS_CLASS::peek();
 }
 
-void MB_ESP8266_SSLClient::setInSecure()
+void MB_ESP8266_TCPClient::setInsecure()
 {
   WCS_CLASS::setInsecure();
 }
 
-void MB_ESP8266_SSLClient::flush()
+void MB_ESP8266_TCPClient::enableSSL(bool enable)
+{
+  _isSSL = enable;
+}
+
+void MB_ESP8266_TCPClient::flush()
 {
   WCS_CLASS::flush();
 }
 
-void MB_ESP8266_SSLClient::setBufferSizes(int recv, int xmit)
+void MB_ESP8266_TCPClient::setBufferSizes(int recv, int xmit)
 {
   WCS_CLASS::setBufferSizes(recv, xmit);
 }
 
-int MB_ESP8266_SSLClient::availableForWrite()
+int MB_ESP8266_TCPClient::availableForWrite()
 {
   return WCS_CLASS::availableForWrite();
 }
 
-void MB_ESP8266_SSLClient::setSession(BearSSL_Session *session)
+void MB_ESP8266_TCPClient::setSession(BearSSL_Session *session)
 {
   WCS_CLASS::setSession(session);
 }
 
-void MB_ESP8266_SSLClient::setKnownKey(const BearSSL_PublicKey *pk, unsigned usages)
+void MB_ESP8266_TCPClient::setKnownKey(const BearSSL_PublicKey *pk, unsigned usages)
 {
   WCS_CLASS::setKnownKey(pk, usages);
 }
 
-bool MB_ESP8266_SSLClient::setFingerprint(const uint8_t fingerprint[20])
+bool MB_ESP8266_TCPClient::setFingerprint(const uint8_t fingerprint[20])
 {
   return WCS_CLASS::setFingerprint(fingerprint);
 }
 
-bool MB_ESP8266_SSLClient::setFingerprint(const char *fpStr)
+bool MB_ESP8266_TCPClient::setFingerprint(const char *fpStr)
 {
   return WCS_CLASS::setFingerprint(fpStr);
 }
 
-void MB_ESP8266_SSLClient::allowSelfSignedCerts()
+void MB_ESP8266_TCPClient::allowSelfSignedCerts()
 {
   WCS_CLASS::allowSelfSignedCerts();
 }
 
-void MB_ESP8266_SSLClient::setTrustAnchors(const BearSSL_X509List *ta)
+void MB_ESP8266_TCPClient::setTrustAnchors(const BearSSL_X509List *ta)
 {
   WCS_CLASS::setTrustAnchors(ta);
 }
 
-void MB_ESP8266_SSLClient::setX509Time(time_t now)
+void MB_ESP8266_TCPClient::setX509Time(time_t now)
 {
   WCS_CLASS::setX509Time(now);
 }
 
-void MB_ESP8266_SSLClient::setClientRSACert(const BearSSL_X509List *cert, const BearSSL_PrivateKey *sk)
+void MB_ESP8266_TCPClient::setClientRSACert(const BearSSL_X509List *cert, const BearSSL_PrivateKey *sk)
 {
   WCS_CLASS::setClientRSACert(cert, sk);
 }
 
-void MB_ESP8266_SSLClient::setClientECCert(const BearSSL_X509List *cert, const BearSSL_PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type)
+void MB_ESP8266_TCPClient::setClientECCert(const BearSSL_X509List *cert, const BearSSL_PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type)
 {
   WCS_CLASS::setClientECCert(cert, sk, allowed_usages, cert_issuer_key_type);
 }
 
-int MB_ESP8266_SSLClient::getMFLNStatus()
+int MB_ESP8266_TCPClient::getMFLNStatus()
 {
   return WCS_CLASS::getMFLNStatus();
 }
 
-int MB_ESP8266_SSLClient::getLastSSLError(char *dest, size_t len)
+int MB_ESP8266_TCPClient::getLastSSLError(char *dest, size_t len)
 {
   return WCS_CLASS::getLastSSLError(dest, len);
 }
 
-void MB_ESP8266_SSLClient::setCertStore(BearSSL_CertStoreBase *certStore)
+void MB_ESP8266_TCPClient::setCertStore(BearSSL_CertStoreBase *certStore)
 {
   WCS_CLASS::setCertStore(certStore);
 }
 
-bool MB_ESP8266_SSLClient::setCiphers(const uint16_t *cipherAry, int cipherCount)
+bool MB_ESP8266_TCPClient::setCiphers(const uint16_t *cipherAry, int cipherCount)
 {
   return WCS_CLASS::setCiphers(cipherAry, cipherCount);
 }
 
-bool MB_ESP8266_SSLClient::setCiphers(const std::vector<uint16_t> &list)
+bool MB_ESP8266_TCPClient::setCiphers(const std::vector<uint16_t> &list)
 {
   return WCS_CLASS::setCiphers(list);
 }
 
-bool MB_ESP8266_SSLClient::setCiphersLessSecure()
+bool MB_ESP8266_TCPClient::setCiphersLessSecure()
 {
   return WCS_CLASS::setCiphersLessSecure();
 }
 
-bool MB_ESP8266_SSLClient::setSSLVersion(uint32_t min, uint32_t max)
+bool MB_ESP8266_TCPClient::setSSLVersion(uint32_t min, uint32_t max)
 {
   return WCS_CLASS::setSSLVersion(min, max);
 }
 
-const char *MB_ESP8266_SSLClient::peekBuffer()
+const char *MB_ESP8266_TCPClient::peekBuffer()
 {
   return WCS_CLASS::peekBuffer();
 }
 
-void MB_ESP8266_SSLClient::peekConsume(size_t consume)
+void MB_ESP8266_TCPClient::peekConsume(size_t consume)
 {
   WCS_CLASS::peekConsume(consume);
 }
 
 #endif /* ESP8266 */
 
-#endif /* MB_ESP8266_SSLCLIENT_CPP */
+#endif /* MB_ESP8266_TCPClient_CPP */

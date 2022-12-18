@@ -1,11 +1,10 @@
 /*
- * ESP32 SSL Client v2.0.2
+ * ESP32 SSL Client v2.0.3
  *
- * Created November 8, 2022
+ * Created December 18, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
- *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -29,13 +28,16 @@
  * by Evandro Copercini - 2017 - Apache 2.0 License
  */
 
-#ifndef ESP32_SSL_Client_H
-#define ESP32_SSL_Client_H
+#ifndef MB_ESP32_SSL_Client_H
+#define MB_ESP32_SSL_Client_H
 
-#ifdef ESP32
+#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
+
+#if defined(ARDUINO)
 #include <Arduino.h>
-#include <string>
+#endif
 
+#include <string>
 #include "mbedtls/platform.h"
 #include "mbedtls/net.h"
 #include "mbedtls/debug.h"
@@ -43,6 +45,7 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/error.h"
+#include "../ESP_SSLClient_FS.h"
 
 static const char mb_ssl_client_str_1[] PROGMEM = "No basic Client is assigned";
 static const char mb_ssl_client_str_2[] PROGMEM = "Seeding the random number generator";
@@ -60,21 +63,23 @@ static const char mb_ssl_client_str_13[] PROGMEM = "Cleaning SSL connection";
 static const char mb_ssl_client_str_14[] PROGMEM = "Root certificate, PSK identity or keys are required for secured connection";
 static const char mb_ssl_client_str_15[] PROGMEM = "Skipping SSL Verification. INSECURE!";
 
-typedef void (*_ConnectionRequestCallback)(const char *, int);
+#ifdef ESP_SSLCLIENT_ENABLE_DEBUG
+#define MB_ESP32_SSLCLIENT_DEBUG_PRINTF Serial.printf
+#else
+#define MB_ESP32_SSLCLIENT_DEBUG_PRINTF(...)
+#endif
 
-class ESP32_SSL_Client
+class MB_ESP32_SSL_Client
 {
-    friend class ESP32_WCS;
+    friend class MB_ESP32_TCPClient;
 
 public:
-    ESP32_SSL_Client(){};
+    MB_ESP32_SSL_Client(){};
 
-    typedef void (*DebugMsgCallback)(PGM_P msg, bool newLine);
-
+private:
     // The SSL context
     typedef struct ssl_context_t
     {
-
         // using the basic Client
         Client *basic_client = nullptr;
 
@@ -87,8 +92,6 @@ public:
         mbedtls_x509_crt ca_cert;
         mbedtls_x509_crt client_cert;
         mbedtls_pk_context client_key;
-
-        DebugMsgCallback *_debugCallback = NULL;
 
         // milliseconds SSL handshake time out
         unsigned long handshake_timeout;
@@ -171,20 +174,18 @@ public:
     bool verify_ssl_dn(ssl_ctx *ssl, const char *domain_name);
 
     /**
-     * Send the mbedTLS error info to the callback.
+     * Print mbedTLS error to serial.
      *
-     * @param ssl The pointer to ssl data (context) which its ssl->_debugCallback will be used.
      * @param errNo The mbedTLS error number that will be translated to string via mbedtls_strerror.
      */
-    void ssl_client_send_mbedtls_error_cb(ssl_ctx *ssl, int errNo);
+    void ssl_client_mbedtls_error_print(int errNo);
 
     /**
-     * Send the predefined flash string error to the callback.
+     * Print info to serial.
      *
-     * @param ssl The pointer to ssl data (context) which its ssl->_debugCallback will be used.
-     * @param info The PROGMEM error string.
+     * @param msg The message to print.
      */
-    void ssl_client_debug_pgm_send_cb(ssl_ctx *ssl, PGM_P info);
+    void ssl_client_print(PGM_P msg);
 
     /**
      * Convert Hex char to decimal number
@@ -219,4 +220,4 @@ public:
 
 #endif // ESP32
 
-#endif // ESP32_SSL_Client_H
+#endif // MB_ESP32_SSL_Client_H

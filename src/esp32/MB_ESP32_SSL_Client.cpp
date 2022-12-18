@@ -1,11 +1,10 @@
 /*
- * ESP32 SSL Client v2.0.2
+ * ESP32 SSL Client v2.0.3
  *
- * Created November 8, 2022
+ * Created December 18, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
- *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -33,15 +32,18 @@
  * Additions Copyright (C) 2017 Evandro Luis Copercini, Apache 2.0 License.
  */
 
-#ifndef ESP32_SSL_Client_CPP
-#define ESP32_SSL_Client_CPP
+#ifndef MB_ESP32_SSL_Client_CPP
+#define MB_ESP32_SSL_Client_CPP
 
-#ifdef ESP32
+#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
 
+#if defined(ARDUINO)
 #include <Arduino.h>
+#endif
+
 #include <mbedtls/sha256.h>
 #include <mbedtls/oid.h>
-#include "ESP32_SSL_Client.h"
+#include "MB_ESP32_SSL_Client.h"
 
 #if !defined(MBEDTLS_KEY_EXCHANGE__SOME__PSK_ENABLED) && !defined(MBEDTLS_KEY_EXCHANGE_SOME_PSK_ENABLED)
 #error "Please configure IDF framework to include mbedTLS -> Enable pre-shared-key ciphersuites and activate at least one cipher"
@@ -67,93 +69,148 @@ static int _esp32_ssl_handle_error(int err, const char *file, int line)
 
 #define esp32_ssl_handle_error(e) _esp32_ssl_handle_error(e, __FUNCTION__, __LINE__)
 
-void ESP32_SSL_Client::ssl_init(ssl_ctx *ssl)
+void MB_ESP32_SSL_Client::ssl_init(ssl_ctx *ssl)
 {
     mbedtls_ssl_init(&ssl->ssl_ctx);
     mbedtls_ssl_config_init(&ssl->ssl_conf);
     mbedtls_ctr_drbg_init(&ssl->drbg_ctx);
 }
 
-/**
- * \brief          Callback type: send data on the network.
- *
- * \note           That callback may be either blocking or non-blocking.
- *
- * \param ctx      Context for the send callback (typically a file descriptor)
- * \param buf      Buffer holding the data to send
- * \param len      Length of the data to send
- *
- * \return         The callback must return the number of bytes sent if any,
- *                 or a non-zero error code.
- *                 If performing non-blocking I/O, \c MBEDTLS_ERR_SSL_WANT_WRITE
- *                 must be returned when the operation would block.
- *
- * \note           The callback is allowed to send fewer bytes than requested.
- *                 It must always return the number of bytes actually sent.
- */
-static int esp_mail_esp32_basic_client_send(void *ctx, const unsigned char *buf, size_t len)
+namespace mb_basic_client_io
 {
-    Client *basic_client = (Client *)ctx;
-
-    if (!basic_client)
-        return -1;
-
-    int res = basic_client->write(buf, len);
-
-    return res;
-}
-
-/**
- * \brief          Callback type: receive data from the network, with timeout
- *
- * \note           That callback must block until data is received, or the
- *                 timeout delay expires, or the operation is interrupted by a
- *                 signal.
- *
- * \param ctx      Context for the receive callback (typically a file descriptor)
- * \param buf      Buffer to write the received data to
- * \param len      Length of the receive buffer
- * \param timeout  Maximum number of milliseconds to wait for data
- *                 0 means no timeout (potentially waiting forever)
- *
- * \return         The callback must return the number of bytes received,
- *                 or a non-zero error code:
- *                 \c MBEDTLS_ERR_SSL_TIMEOUT if the operation timed out,
- *                 \c MBEDTLS_ERR_SSL_WANT_READ if interrupted by a signal.
- *
- * \note           The callback may receive fewer bytes than the length of the
- *                 buffer. It must always return the number of bytes actually
- *                 received and written to the buffer.
- */
-static int esp_mail_esp32_basic_client_recv_timeout(void *ctx, unsigned char *buf, size_t len, uint32_t timeout)
-{
-    Client *basic_client = (Client *)ctx;
-
-    if (!basic_client)
-        return -1;
-
-    int available = basic_client->available();
-
-    int res = 0;
-
-    unsigned long to = millis();
-    while (millis() - to < timeout && available < len)
+    static int client_read(Client *client, const unsigned char *buf, size_t len, uint32_t timeout, bool blockingRead)
     {
-        delay(0);
-        available = basic_client->available();
-        if (millis() - to >= timeout)
-            res = MBEDTLS_ERR_SSL_TIMEOUT;
-    };
+        int ret = 0;
+        if (blockingRead)
+        {
+            // We wait the required available data
+            unsigned long ts = millis();
 
-    res = basic_client->read(buf, len);
+            // The timeout is the socket timeout which is not aplicable for our case.
+            // We need to check for its value for 0 (required data and wait forever) or other values for specific waiting
+            if (timeout == 0 /* SSL engine required more data and wait forever? */)
+                timeout = 1000; /* we can't wait forever but set the specific waiting time (1 sec) for our basic client data polling */
 
-    if (!res)
+            // polling read the required data with specific time out
+            while (!ret && millis() - ts < timeout)
+                ret = client->read((uint8_t *)buf, len);
+        }
+        else
+            ret = client->read((uint8_t *)buf, len);
+
+        // This is required for ESP32 when continuousely reading large data or multiples chunks from slow SPI
+        // basic client device, otherwise the connection may die at some point
+        if (ret)
+            delay(0);
+
+        return ret;
+    }
+
+    /**
+     * \brief          Callback type: send data on the network.
+     *
+     * \note           That callback may be either blocking or non-blocking.
+     *
+     * \param ctx      Context for the send callback (typically a file descriptor)
+     * \param buf      Buffer holding the data to send
+     * \param len      Length of the data to send
+     *
+     * \return         The callback must return the number of bytes sent if any,
+     *                 or a non-zero error code.
+     *                 If performing non-blocking I/O, \c MBEDTLS_ERR_SSL_WANT_WRITE
+     *                 must be returned when the operation would block.
+     *
+     * \note           The callback is allowed to send fewer bytes than requested.
+     *                 It must always return the number of bytes actually sent.
+     */
+    static int net_send(void *ctx, const unsigned char *buf, size_t len)
+    {
+        Client *basic_client = (Client *)ctx;
+
+        if (!basic_client)
+            return -1;
+
+        int res = basic_client->write(buf, len);
+
+        return res;
+    }
+
+    /**
+     * \brief          Callback type: receive data from the network, with timeout
+     *
+     * \note           That callback must block until data is received, or the
+     *                 timeout delay expires, or the operation is interrupted by a
+     *                 signal.
+     *
+     * \param ctx      Context for the receive callback (typically a file descriptor)
+     * \param buf      Buffer to write the received data to
+     * \param len      Length of the receive buffer
+     * \param timeout  Maximum number of milliseconds to wait for data
+     *                 0 means no timeout (potentially waiting forever)
+     *
+     * \return         The callback must return the number of bytes received,
+     *                 or a non-zero error code:
+     *                 \c MBEDTLS_ERR_SSL_TIMEOUT if the operation timed out,
+     *                 \c MBEDTLS_ERR_SSL_WANT_READ if interrupted by a signal.
+     *
+     * \note           The callback may receive fewer bytes than the length of the
+     *                 buffer. It must always return the number of bytes actually
+     *                 received and written to the buffer.
+     */
+    static int net_recv_timeout(void *ctx, unsigned char *buf, size_t len, uint32_t timeout)
+    {
+        // This should not return any error before we accessing data from basic client rx buffer.
+
+        // We will return MBEDTLS_ERR_NET_CONN_RESET or MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY
+        // only when the connection was closed with no data is available in the basic client rx buffer.
+
+        // As the TCP socket is not reachable from basic client, the following code flow
+        // is suitable for reading the incoming data from basic client
+        // and writing that data to the mbedTLS buffer for further processing.
+
+        // static cast the basic client from the ssl context
+        Client *basic_client = (Client *)ctx;
+
+        if (!basic_client)
+            return -1;
+
+        // If timeout value of this callback is zero, it indicated that the the SSL engine
+        // looks for the next required available data which should be available.
+        // As we work with basic client instead of socket which is unreachable, we will be
+        // polling read the basic client data with the time out instead of waiting forever
+        // in case socket and return MBEDTLS_ERR_SSL_WANT_READ in case of error or timed out.
+
+        // The 16384 bytes IO buffers of mbedTLS were allocated and cannot be changed,
+        // the len can be as large as its buffer size.
+        // https://github.com/Mbed-TLS/mbedtls/issues/1203
+        // https://github.com/Mbed-TLS/mbedtls/pull/1208
+
+        for (int i = 0; i < 2; i++)
+        {
+            // first, non-blocking data reading from basic client, then blocking read if it failed
+            int ret = mb_basic_client_io::client_read(basic_client, buf, len, timeout, i == 0 ? false /* non-blocking read */
+                                                                                              : true /* blocking read */);
+            // data is already in mbedTLS buffer? return the amount of available data
+            // the return value may less than the required data buffer length (len)
+            if (ret)
+                return ret;
+        }
+
+        // If no data existed in basic client rx buffer and its connection was already closed
+        // now freeing all the allocated memories by returning MBEDTLS_ERR_NET_CONN_RESET or
+        // MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY.
+
+        // Don't return MBEDTLS_ERR_NET_CONN_RESET or MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY without checking
+        // the available rx buffer data.
+        if (!basic_client->connected() && basic_client->available() == 0)
+            return MBEDTLS_ERR_NET_CONN_RESET;
+
+        // need more data
         return MBEDTLS_ERR_SSL_WANT_READ;
+    }
+};
 
-    return res;
-}
-
-int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *rootCABuff, const char *cli_cert, const char *cli_key, const char *pskIdent, const char *psKey, bool insecure)
+int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *rootCABuff, const char *cli_cert, const char *cli_key, const char *pskIdent, const char *psKey, bool insecure)
 {
 
     if (!ssl->basic_client)
@@ -161,32 +218,32 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
 
     if (rootCABuff == NULL && pskIdent == NULL && psKey == NULL && !insecure)
     {
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_14);
+        ssl_client_print(mb_ssl_client_str_14);
         return -1;
     }
 
     char buf[512];
     int ret, flags;
 
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_2);
+    ssl_client_print(mb_ssl_client_str_2);
 
-    log_v("Seeding the random number generator");
+    log_v(mb_ssl_client_str_2 /* "Seeding the random number generator" */);
     mbedtls_entropy_init(&ssl->entropy_ctx);
 
     ret = mbedtls_ctr_drbg_seed(&ssl->drbg_ctx, mbedtls_entropy_func, &ssl->entropy_ctx, (const unsigned char *)custom_str, strlen(custom_str));
     if (ret < 0)
     {
-        ssl_client_send_mbedtls_error_cb(ssl, ret);
+        ssl_client_mbedtls_error_print(ret);
         return esp32_ssl_handle_error(ret);
     }
 
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_3);
+    ssl_client_print(mb_ssl_client_str_3);
 
-    log_v("Setting up the SSL/TLS structure...");
+    log_v(mb_ssl_client_str_3 /* "Setting up the SSL/TLS structure..." */);
 
     if ((ret = mbedtls_ssl_config_defaults(&ssl->ssl_conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
     {
-        ssl_client_send_mbedtls_error_cb(ssl, ret);
+        ssl_client_mbedtls_error_print(ret);
         return esp32_ssl_handle_error(ret);
     }
 
@@ -195,15 +252,15 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
 
     if (insecure)
     {
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_15);
+        ssl_client_print(mb_ssl_client_str_15);
 
         mbedtls_ssl_conf_authmode(&ssl->ssl_conf, MBEDTLS_SSL_VERIFY_NONE);
-        log_i("WARNING: Skipping SSL Verification. INSECURE!");
+        log_i(mb_ssl_client_str_15 /* "WARNING: Skipping SSL Verification. INSECURE!" */);
     }
     else if (rootCABuff != NULL)
     {
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_4);
-        log_v("Loading CA cert");
+        ssl_client_print(mb_ssl_client_str_4);
+        log_v(mb_ssl_client_str_4 /* "Loading CA cert" */);
 
         mbedtls_x509_crt_init(&ssl->ca_cert);
         mbedtls_ssl_conf_authmode(&ssl->ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
@@ -212,7 +269,7 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
         // mbedtls_ssl_conf_verify(&ssl->ssl_ctx, my_verify, NULL );
         if (ret < 0)
         {
-            ssl_client_send_mbedtls_error_cb(ssl, ret);
+            ssl_client_mbedtls_error_print(ret);
             // free the ca_cert in the case parse failed, otherwise, the old ca_cert still in the heap memory, that lead to "out of memory" crash.
             mbedtls_x509_crt_free(&ssl->ca_cert);
             return esp32_ssl_handle_error(ret);
@@ -220,12 +277,12 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
     }
     else if (pskIdent != NULL && psKey != NULL)
     {
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_5);
-        log_v("Setting up PSK");
+        ssl_client_print(mb_ssl_client_str_5);
+        log_v(mb_ssl_client_str_5 /* "Setting up PSK" */);
         // convert PSK from hex to binary
         if ((strlen(psKey) & 1) != 0 || strlen(psKey) > 2 * MBEDTLS_PSK_MAX_LEN)
         {
-            ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_6);
+            ssl_client_print(mb_ssl_client_str_6);
             log_e("pre-shared key not valid hex or too long");
             return -1;
         }
@@ -257,14 +314,14 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
         }
 
         // set mbedtls config
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_7);
+        ssl_client_print(mb_ssl_client_str_7);
 
         ret = mbedtls_ssl_conf_psk(&ssl->ssl_conf, psk, psk_len,
                                    (const unsigned char *)pskIdent, strlen(pskIdent));
         if (ret != 0)
         {
 
-            ssl_client_send_mbedtls_error_cb(ssl, ret);
+            ssl_client_mbedtls_error_print(ret);
 
             log_e("mbedtls_ssl_conf_psk returned %d", ret);
             return esp32_ssl_handle_error(ret);
@@ -281,41 +338,41 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
         mbedtls_x509_crt_init(&ssl->client_cert);
         mbedtls_pk_init(&ssl->client_key);
 
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_8);
+        ssl_client_print(mb_ssl_client_str_8);
 
-        log_v("Loading CRT cert");
+        log_v(mb_ssl_client_str_8 /* "Loading CRT cert" */);
 
         ret = mbedtls_x509_crt_parse(&ssl->client_cert, (const unsigned char *)cli_cert, strlen(cli_cert) + 1);
         if (ret < 0)
         {
-            ssl_client_send_mbedtls_error_cb(ssl, ret);
+            ssl_client_mbedtls_error_print(ret);
             // free the client_cert in the case parse failed, otherwise, the old client_cert still in the heap memory, that lead to "out of memory" crash.
             mbedtls_x509_crt_free(&ssl->client_cert);
             return esp32_ssl_handle_error(ret);
         }
 
-        ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_9);
+        ssl_client_print(mb_ssl_client_str_9);
 
-        log_v("Loading private key");
+        log_v(mb_ssl_client_str_9 /* "Loading private key" */);
         ret = mbedtls_pk_parse_key(&ssl->client_key, (const unsigned char *)cli_key, strlen(cli_key) + 1, NULL, 0);
 
         if (ret != 0)
         {
-            ssl_client_send_mbedtls_error_cb(ssl, ret);
+            ssl_client_mbedtls_error_print(ret);
             return esp32_ssl_handle_error(ret);
         }
 
         mbedtls_ssl_conf_own_cert(&ssl->ssl_conf, &ssl->client_cert, &ssl->client_key);
     }
 
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_10);
+    ssl_client_print(mb_ssl_client_str_10);
 
-    log_v("Setting hostname for TLS session...");
+    log_v(mb_ssl_client_str_10 /* "Setting hostname for TLS session..." */);
 
     // Hostname set here should match CN in server certificate
     if ((ret = mbedtls_ssl_set_hostname(&ssl->ssl_ctx, host)) != 0)
     {
-        ssl_client_send_mbedtls_error_cb(ssl, ret);
+        ssl_client_mbedtls_error_print(ret);
         return esp32_ssl_handle_error(ret);
     }
 
@@ -323,21 +380,21 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
 
     if ((ret = mbedtls_ssl_setup(&ssl->ssl_ctx, &ssl->ssl_conf)) != 0)
     {
-        ssl_client_send_mbedtls_error_cb(ssl, ret);
+        ssl_client_mbedtls_error_print(ret);
         return esp32_ssl_handle_error(ret);
     }
 
-    mbedtls_ssl_set_bio(&ssl->ssl_ctx, ssl->basic_client, esp_mail_esp32_basic_client_send, NULL, esp_mail_esp32_basic_client_recv_timeout);
+    mbedtls_ssl_set_bio(&ssl->ssl_ctx, ssl->basic_client, mb_basic_client_io::net_send, NULL, mb_basic_client_io::net_recv_timeout /* blocking net data reading */);
 
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_11);
+    ssl_client_print(mb_ssl_client_str_11);
 
-    log_v("Performing the SSL/TLS handshake...");
+    log_v(mb_ssl_client_str_11 /* "Performing the SSL/TLS handshake..." */);
     unsigned long handshake_start_time = millis();
     while ((ret = mbedtls_ssl_handshake(&ssl->ssl_ctx)) != 0)
     {
         if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
         {
-            ssl_client_send_mbedtls_error_cb(ssl, ret);
+            ssl_client_mbedtls_error_print(ret);
             return esp32_ssl_handle_error(ret);
         }
         if ((millis() - handshake_start_time) > ssl->handshake_timeout)
@@ -358,9 +415,9 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
             log_w("Record expansion is unknown (compression)");
         }
     }
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_12);
+    ssl_client_print(mb_ssl_client_str_12);
 
-    log_v("Verifying peer X.509 certificate...");
+    log_v(mb_ssl_client_str_12 /* "Verifying peer X.509 certificate..." */);
 
     if ((flags = mbedtls_ssl_get_verify_result(&ssl->ssl_ctx)) != 0)
     {
@@ -372,7 +429,7 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
     }
     else
     {
-        log_v("Certificate verified.");
+        log_v(F("Certificate verified."));
     }
 
     if (rootCABuff != NULL)
@@ -395,9 +452,9 @@ int ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char *ro
     return 1;
 }
 
-void ESP32_SSL_Client::stop_tcp_connection(ssl_ctx *ssl, const char *rootCABuff, const char *cli_cert, const char *cli_key)
+void MB_ESP32_SSL_Client::stop_tcp_connection(ssl_ctx *ssl, const char *rootCABuff, const char *cli_cert, const char *cli_key)
 {
-    ssl_client_debug_pgm_send_cb(ssl, mb_ssl_client_str_13);
+    ssl_client_print(mb_ssl_client_str_13);
 
     log_v("Cleaning SSL connection.");
 
@@ -407,7 +464,7 @@ void ESP32_SSL_Client::stop_tcp_connection(ssl_ctx *ssl, const char *rootCABuff,
     mbedtls_entropy_free(&ssl->entropy_ctx);
 }
 
-int ESP32_SSL_Client::data_to_read(ssl_ctx *ssl)
+int MB_ESP32_SSL_Client::data_to_read(ssl_ctx *ssl)
 {
     int ret, res;
     ret = mbedtls_ssl_read(&ssl->ssl_ctx, NULL, 0);
@@ -416,14 +473,14 @@ int ESP32_SSL_Client::data_to_read(ssl_ctx *ssl)
     // log_e("RES: %i",res);    //for low level debug
     if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret < 0)
     {
-        ssl_client_send_mbedtls_error_cb(ssl, ret);
+        ssl_client_mbedtls_error_print(ret);
         return esp32_ssl_handle_error(ret);
     }
 
     return res;
 }
 
-int ESP32_SSL_Client::send_ssl_data(ssl_ctx *ssl, const uint8_t *data, size_t len)
+int MB_ESP32_SSL_Client::send_ssl_data(ssl_ctx *ssl, const uint8_t *data, size_t len)
 {
     log_v("Writing request with %d bytes...", len); // for low level debug
     int ret = -1;
@@ -442,7 +499,7 @@ int ESP32_SSL_Client::send_ssl_data(ssl_ctx *ssl, const uint8_t *data, size_t le
     return ret;
 }
 
-int ESP32_SSL_Client::get_ssl_receive(ssl_ctx *ssl, uint8_t *data, int length)
+int MB_ESP32_SSL_Client::get_ssl_receive(ssl_ctx *ssl, uint8_t *data, int length)
 {
 
     // log_d( "Reading HTTP response...");   //for low level debug
@@ -454,7 +511,7 @@ int ESP32_SSL_Client::get_ssl_receive(ssl_ctx *ssl, uint8_t *data, int length)
     return ret;
 }
 
-bool ESP32_SSL_Client::parseHexNibble(char pb, uint8_t *res)
+bool MB_ESP32_SSL_Client::parseHexNibble(char pb, uint8_t *res)
 {
     if (pb >= '0' && pb <= '9')
     {
@@ -475,7 +532,7 @@ bool ESP32_SSL_Client::parseHexNibble(char pb, uint8_t *res)
 }
 
 // Compare a name from certificate and domain name, return true if they match
-bool ESP32_SSL_Client::matchName(const std::string &name, const std::string &domainName)
+bool MB_ESP32_SSL_Client::matchName(const std::string &name, const std::string &domainName)
 {
     size_t wildcardPos = name.find('*');
     if (wildcardPos == std::string::npos)
@@ -506,7 +563,7 @@ bool ESP32_SSL_Client::matchName(const std::string &name, const std::string &dom
 }
 
 // Verifies certificate provided by the peer to match specified SHA256 fingerprint
-bool ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, const char *domain_name)
+bool MB_ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, const char *domain_name)
 {
     // Convert hex string to byte array
     uint8_t fingerprint_local[32];
@@ -538,7 +595,7 @@ bool ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, cons
 
     if (!crt)
     {
-        log_d("could not fetch peer certificate");
+        log_d(F("could not fetch peer certificate"));
         return false;
     }
 
@@ -553,7 +610,7 @@ bool ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, cons
     // Check if fingerprints match
     if (memcmp(fingerprint_local, fingerprint_remote, 32))
     {
-        log_d("fingerprint doesn't match");
+        log_d(F("fingerprint doesn't match"));
         return false;
     }
 
@@ -565,7 +622,7 @@ bool ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, cons
 }
 
 // Checks if peer certificate has specified domain in CN or SANs
-bool ESP32_SSL_Client::verify_ssl_dn(ssl_ctx *ssl, const char *domain_name)
+bool MB_ESP32_SSL_Client::verify_ssl_dn(ssl_ctx *ssl, const char *domain_name)
 {
     log_d("domain name: '%s'", (domain_name) ? domain_name : "(null)");
     std::string domain_name_str(domain_name);
@@ -612,33 +669,21 @@ bool ESP32_SSL_Client::verify_ssl_dn(ssl_ctx *ssl, const char *domain_name)
     return false;
 }
 
-void ESP32_SSL_Client::ssl_client_send_mbedtls_error_cb(ssl_ctx *ssl, int errNo)
+void MB_ESP32_SSL_Client::ssl_client_mbedtls_error_print(int errNo)
 {
-    if (!ssl->_debugCallback)
-        return;
-
     char *error_buf = new char[100];
     mbedtls_strerror(errNo, error_buf, 100);
-    (*ssl->_debugCallback)(error_buf, true);
+    Serial.println(error_buf);
     delete[] error_buf;
     error_buf = nullptr;
 }
 
-void ESP32_SSL_Client::ssl_client_debug_pgm_send_cb(ssl_ctx *ssl, PGM_P info)
+void MB_ESP32_SSL_Client::ssl_client_print(PGM_P msg)
 {
-    if (!ssl->_debugCallback)
-        return;
-
-    size_t dbgInfoLen = strlen_P(info) + 1;
-    char *dbgInfo = new char[dbgInfoLen];
-    memset(dbgInfo, 0, dbgInfoLen);
-    strcpy_P(dbgInfo, info);
-
-    (*ssl->_debugCallback)(dbgInfo, true);
-    delete[] dbgInfo;
-    dbgInfo = nullptr;
+    MB_ESP32_SSLCLIENT_DEBUG_PRINTF(msg);
+    MB_ESP32_SSLCLIENT_DEBUG_PRINTF("\r\n");
 }
 
 #endif // ESP32
 
-#endif // ESP32_SSL_Client_CPP
+#endif // MB_ESP32_SSL_Client_CPP

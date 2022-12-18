@@ -1,7 +1,7 @@
 
 /**
  *
- * The Network Upgradable BearSSL Client Class, ESP8266_SSL_Client.cpp v2.0.0
+ * The Network Upgradable BearSSL Client Class, MB_ESP8266_SSL_Client.cpp v2.0.0
  *
  * Created July 20, 2022
  *
@@ -51,14 +51,14 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef ESP8266_SSL_Client_CPP
-#define ESP8266_SSL_Client_CPP
+#ifndef MB_ESP8266_SSL_Client_CPP
+#define MB_ESP8266_SSL_Client_CPP
 
 #if defined(ESP8266)
 
-#include "ESP8266_SSL_Client.h"
+#include "MB_ESP8266_SSL_Client.h"
 
-void ESP8266_SSL_Client::m_clear()
+void MB_ESP8266_SSL_Client::m_clear()
 {
 
     ssl_client_ctx = nullptr;
@@ -89,7 +89,7 @@ void ESP8266_SSL_Client::m_clear()
     tls_version_max = BR_TLS12;
 }
 
-ESP8266_SSL_Client::ESP8266_SSL_Client()
+MB_ESP8266_SSL_Client::MB_ESP8266_SSL_Client()
 {
     m_clear();
     m_clearAuthenticationSettings();
@@ -98,7 +98,7 @@ ESP8266_SSL_Client::ESP8266_SSL_Client()
     stack_thunk_add_ref();
 }
 
-ESP8266_SSL_Client::~ESP8266_SSL_Client()
+MB_ESP8266_SSL_Client::~MB_ESP8266_SSL_Client()
 {
     if (base_client)
     {
@@ -111,13 +111,13 @@ ESP8266_SSL_Client::~ESP8266_SSL_Client()
     stack_thunk_del_ref();
 }
 
-void ESP8266_SSL_Client::setClientRSACert(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk)
+void MB_ESP8266_SSL_Client::setClientRSACert(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk)
 {
     this->chain = chain;
     this->sk = sk;
 }
 
-void ESP8266_SSL_Client::setClientECCert(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type)
+void MB_ESP8266_SSL_Client::setClientECCert(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type)
 {
     this->chain = chain;
     this->sk = sk;
@@ -125,24 +125,24 @@ void ESP8266_SSL_Client::setClientECCert(const BearSSL_X509List *chain, const Be
     this->cert_issuer_key_type = cert_issuer_key_type;
 }
 
-void ESP8266_SSL_Client::setBufferSizes(int recv, int xmit)
+void MB_ESP8266_SSL_Client::setBufferSizes(int recv, int xmit)
 {
     // Following constants taken from bearssl/src/ssl/ssl_engine.c (not exported unfortunately)
-    const int ESP8266_SSL_CLIENT_MAX_OUT_OVERHEAD = 85;
-    const int ESP8266_SSL_CLIENT_MAX_IN_OVERHEAD = 325;
+    const int MB_ESP8266_SSL_Client_MAX_OUT_OVERHEAD = 85;
+    const int MB_ESP8266_SSL_Client_MAX_IN_OVERHEAD = 325;
 
     // The data buffers must be between 512B and 16KB
     recv = std::max(512, std::min(16384, recv));
     xmit = std::max(512, std::min(16384, xmit));
 
     // Add in overhead for SSL protocol
-    recv += ESP8266_SSL_CLIENT_MAX_IN_OVERHEAD;
-    xmit += ESP8266_SSL_CLIENT_MAX_OUT_OVERHEAD;
+    recv += MB_ESP8266_SSL_Client_MAX_IN_OVERHEAD;
+    xmit += MB_ESP8266_SSL_Client_MAX_OUT_OVERHEAD;
     ssl_iobuf_in_size = recv;
     ssl_iobuf_out_size = xmit;
 }
 
-void ESP8266_SSL_Client::stop()
+void MB_ESP8266_SSL_Client::stop()
 {
 
     if (base_client)
@@ -163,7 +163,7 @@ void ESP8266_SSL_Client::stop()
     m_freeSSL();
 }
 
-void ESP8266_SSL_Client::flush()
+void MB_ESP8266_SSL_Client::flush()
 {
     if (!base_client)
         return;
@@ -174,7 +174,7 @@ void ESP8266_SSL_Client::flush()
     base_client->flush();
 }
 
-int ESP8266_SSL_Client::connect(IPAddress ip, uint16_t port)
+int MB_ESP8266_SSL_Client::connect(IPAddress ip, uint16_t port)
 {
     if (!base_client)
     {
@@ -191,7 +191,7 @@ int ESP8266_SSL_Client::connect(IPAddress ip, uint16_t port)
     return true;
 }
 
-bool ESP8266_SSL_Client::connect(const char *name, uint16_t port)
+bool MB_ESP8266_SSL_Client::connect(const char *name, uint16_t port)
 {
     if (!base_client)
     {
@@ -208,12 +208,12 @@ bool ESP8266_SSL_Client::connect(const char *name, uint16_t port)
     return true;
 }
 
-int ESP8266_SSL_Client::connect(const String &host, uint16_t port)
+int MB_ESP8266_SSL_Client::connect(const String &host, uint16_t port)
 {
     return connect(host.c_str(), port);
 }
 
-void ESP8266_SSL_Client::m_freeSSL()
+void MB_ESP8266_SSL_Client::m_freeSSL()
 {
     // These are smart pointers and will free if refcnt==0
     ssl_client_ctx = nullptr;
@@ -236,12 +236,12 @@ void ESP8266_SSL_Client::m_freeSSL()
     secured = false;
 }
 
-bool ESP8266_SSL_Client::m_clientConnected()
+bool MB_ESP8266_SSL_Client::m_clientConnected()
 {
     return (base_client && base_client->connected());
 }
 
-bool ESP8266_SSL_Client::connected()
+bool MB_ESP8266_SSL_Client::connected()
 {
     if (!base_client)
         return false;
@@ -256,7 +256,7 @@ bool ESP8266_SSL_Client::connected()
     return false;
 }
 
-int ESP8266_SSL_Client::availableForWrite()
+int MB_ESP8266_SSL_Client::availableForWrite()
 {
     if (!base_client || !secured)
         return 0;
@@ -284,7 +284,7 @@ int ESP8266_SSL_Client::availableForWrite()
     return 0;
 }
 
-size_t ESP8266_SSL_Client::m_write(const uint8_t *buf, size_t size, bool pmem)
+size_t MB_ESP8266_SSL_Client::m_write(const uint8_t *buf, size_t size, bool pmem)
 {
 
     if (!base_client)
@@ -354,17 +354,17 @@ size_t ESP8266_SSL_Client::m_write(const uint8_t *buf, size_t size, bool pmem)
     return sent_bytes;
 }
 
-size_t ESP8266_SSL_Client::write(const uint8_t *buf, size_t size)
+size_t MB_ESP8266_SSL_Client::write(const uint8_t *buf, size_t size)
 {
     return m_write(buf, size, false);
 }
 
-size_t ESP8266_SSL_Client::write_P(PGM_P buf, size_t size)
+size_t MB_ESP8266_SSL_Client::write_P(PGM_P buf, size_t size)
 {
     return m_write((const uint8_t *)buf, size, true);
 }
 
-size_t ESP8266_SSL_Client::write(Stream &stream)
+size_t MB_ESP8266_SSL_Client::write(Stream &stream)
 {
     if (!connected() || !handshake_done)
     {
@@ -378,7 +378,7 @@ size_t ESP8266_SSL_Client::write(Stream &stream)
     return m_write(buf, dl, false);
 }
 
-int ESP8266_SSL_Client::read(uint8_t *buf, size_t size)
+int MB_ESP8266_SSL_Client::read(uint8_t *buf, size_t size)
 {
     if (!base_client)
         return 0;
@@ -424,20 +424,20 @@ int ESP8266_SSL_Client::read(uint8_t *buf, size_t size)
 
 // return a pointer to available data buffer (size = peekAvailable())
 // semantic forbids any kind of read() before calling peekConsume()
-const char *ESP8266_SSL_Client::peekBuffer()
+const char *MB_ESP8266_SSL_Client::peekBuffer()
 {
     return (const char *)recvapp_buf;
 }
 
 // consume bytes after use (see peekBuffer)
-void ESP8266_SSL_Client::peekConsume(size_t consume)
+void MB_ESP8266_SSL_Client::peekConsume(size_t consume)
 {
     br_ssl_engine_recvapp_ack(eng, consume);
     recvapp_buf = nullptr;
     recvapp_len = 0;
 }
 
-int ESP8266_SSL_Client::read()
+int MB_ESP8266_SSL_Client::read()
 {
     if (!base_client)
         return -1;
@@ -454,7 +454,7 @@ int ESP8266_SSL_Client::read()
     return -1;
 }
 
-int ESP8266_SSL_Client::available()
+int MB_ESP8266_SSL_Client::available()
 {
     if (!base_client)
         return 0;
@@ -488,7 +488,7 @@ int ESP8266_SSL_Client::available()
     return 0;
 }
 
-int ESP8266_SSL_Client::peek()
+int MB_ESP8266_SSL_Client::peek()
 {
     if (!available())
     {
@@ -507,7 +507,7 @@ int ESP8266_SSL_Client::peek()
     return -1;
 }
 
-size_t ESP8266_SSL_Client::peekBytes(uint8_t *buffer, size_t length)
+size_t MB_ESP8266_SSL_Client::peekBytes(uint8_t *buffer, size_t length)
 {
     if (!base_client || !secured)
         return 0;
@@ -532,7 +532,7 @@ size_t ESP8266_SSL_Client::peekBytes(uint8_t *buffer, size_t length)
    achieved, this function returns 0. On error, it returns -1.
 */
 
-int ESP8266_SSL_Client::m_run_until(unsigned int target, bool blocking)
+int MB_ESP8266_SSL_Client::m_run_until(unsigned int target, bool blocking)
 {
 
     esp8266::polledTimeout::oneShotMs loopTimeout(timeout);
@@ -693,7 +693,7 @@ int ESP8266_SSL_Client::m_run_until(unsigned int target, bool blocking)
     return -1;
 }
 
-bool ESP8266_SSL_Client::m_wait_for_handshake()
+bool MB_ESP8266_SSL_Client::m_wait_for_handshake()
 {
     handshake_done = false;
 
@@ -721,7 +721,7 @@ bool ESP8266_SSL_Client::m_wait_for_handshake()
 }
 
 // Set a fingerprint by parsing an ASCII string
-bool ESP8266_SSL_Client::setFingerprint(const char *fpStr)
+bool MB_ESP8266_SSL_Client::setFingerprint(const char *fpStr)
 {
     int idx = 0;
     uint8_t c, d;
@@ -762,7 +762,7 @@ bool ESP8266_SSL_Client::setFingerprint(const char *fpStr)
 }
 
 // Set custom list of ciphers
-bool ESP8266_SSL_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
+bool MB_ESP8266_SSL_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
 {
     cipher_list = nullptr;
     cipher_list = std::shared_ptr<uint16_t>(new (std::nothrow) uint16_t[cipherCount], std::default_delete<uint16_t[]>());
@@ -776,17 +776,17 @@ bool ESP8266_SSL_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
     return true;
 }
 
-bool ESP8266_SSL_Client::setCiphersLessSecure()
+bool MB_ESP8266_SSL_Client::setCiphersLessSecure()
 {
     return setCiphers(mb_bearssl_faster_suites_P, sizeof(mb_bearssl_faster_suites_P) / sizeof(mb_bearssl_faster_suites_P[0]));
 }
 
-bool ESP8266_SSL_Client::setCiphers(const std::vector<uint16_t> &list)
+bool MB_ESP8266_SSL_Client::setCiphers(const std::vector<uint16_t> &list)
 {
     return setCiphers(&list[0], list.size());
 }
 
-bool ESP8266_SSL_Client::setSSLVersion(uint32_t min, uint32_t max)
+bool MB_ESP8266_SSL_Client::setSSLVersion(uint32_t min, uint32_t max)
 {
     if (((min != BR_TLS10) && (min != BR_TLS11) && (min != BR_TLS12)) ||
         ((max != BR_TLS10) && (max != BR_TLS11) && (max != BR_TLS12)) ||
@@ -800,7 +800,7 @@ bool ESP8266_SSL_Client::setSSLVersion(uint32_t min, uint32_t max)
 }
 
 // Installs the appropriate X509 cert validation method for a client connection
-bool ESP8266_SSL_Client::m_installClientX509Validator()
+bool MB_ESP8266_SSL_Client::m_installClientX509Validator()
 {
 
     if (use_insecure || use_fingerprint || use_self_signed)
@@ -870,7 +870,7 @@ bool ESP8266_SSL_Client::m_installClientX509Validator()
     return true;
 }
 
-std::shared_ptr<unsigned char> ESP8266_SSL_Client::m_alloc_iobuf(size_t sz)
+std::shared_ptr<unsigned char> MB_ESP8266_SSL_Client::m_alloc_iobuf(size_t sz)
 {
     // Allocate buffer with preference to IRAM
 #if defined(ESP8266_CORE_SDK_V3_X_X)
@@ -889,7 +889,7 @@ std::shared_ptr<unsigned char> ESP8266_SSL_Client::m_alloc_iobuf(size_t sz)
 
 // Called by connect() to do the actual SSL setup and handshake.
 // Returns if the SSL handshake succeeded.
-bool ESP8266_SSL_Client::m_connectSSL(const char *hostName)
+bool MB_ESP8266_SSL_Client::m_connectSSL(const char *hostName)
 {
     if (!base_client)
     {
@@ -905,7 +905,7 @@ bool ESP8266_SSL_Client::m_connectSSL(const char *hostName)
 
     MB_ESP8266_SSLCLIENT_DEBUG_PRINTF("m_connectSSL: start connection\n");
 
-#ifdef MB_ESP8266_SSLCLIENT_ENABLE_DEBUG
+#ifdef ESP_SSLCLIENT_ENABLE_DEBUG
     // BearSSL will reject all connections unless an authentication option is set, warn in DEBUG builds
     if (!this->use_insecure && !this->use_fingerprint && !this->use_self_signed && !this->knownkey && !this->certStore && !this->ta)
     {
@@ -988,7 +988,7 @@ bool ESP8266_SSL_Client::m_connectSSL(const char *hostName)
 
 // Slightly different X509 setup for servers who want to validate client
 // certificates, so factor it out as it's used in RSA and EC servers.
-bool ESP8266_SSL_Client::m_installServerX509Validator(const BearSSL_X509List *client_CA_ta)
+bool MB_ESP8266_SSL_Client::m_installServerX509Validator(const BearSSL_X509List *client_CA_ta)
 {
     if (client_CA_ta)
     {
@@ -1024,7 +1024,7 @@ bool ESP8266_SSL_Client::m_installServerX509Validator(const BearSSL_X509List *cl
 }
 
 // Called by WiFiServerBearSSL when an RSA cert/key is specified.
-bool ESP8266_SSL_Client::m_connectSSLServerRSA(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk, BearSSL_ServerSessions *cache, const BearSSL_X509List *client_CA_ta)
+bool MB_ESP8266_SSL_Client::m_connectSSLServerRSA(const BearSSL_X509List *chain, const BearSSL_PrivateKey *sk, BearSSL_ServerSessions *cache, const BearSSL_X509List *client_CA_ta)
 {
     m_freeSSL();
     oom_err = false;
@@ -1066,7 +1066,7 @@ bool ESP8266_SSL_Client::m_connectSSLServerRSA(const BearSSL_X509List *chain, co
 }
 
 // Called by WiFiServerBearSSL when an elliptic curve cert/key is specified.
-bool ESP8266_SSL_Client::m_connectSSLServerEC(const BearSSL_X509List *chain, unsigned cert_issuer_key_type, const BearSSL_PrivateKey *sk, BearSSL_ServerSessions *cache, const BearSSL_X509List *client_CA_ta)
+bool MB_ESP8266_SSL_Client::m_connectSSLServerEC(const BearSSL_X509List *chain, unsigned cert_issuer_key_type, const BearSSL_PrivateKey *sk, BearSSL_ServerSessions *cache, const BearSSL_X509List *client_CA_ta)
 {
 #ifndef BEARSSL_SSL_BASIC
     m_freeSSL();
@@ -1116,7 +1116,7 @@ bool ESP8266_SSL_Client::m_connectSSLServerEC(const BearSSL_X509List *chain, uns
 }
 
 //  Set up the x509 insecure data structures for BearSSL core to use.
-void ESP8266_SSL_Client::m_br_x509_insecure_init(mb_br_x509_insecure_context *ctx, int _use_fingerprint, const uint8_t _fingerprint[20], int _allow_self_signed)
+void MB_ESP8266_SSL_Client::m_br_x509_insecure_init(mb_br_x509_insecure_context *ctx, int _use_fingerprint, const uint8_t _fingerprint[20], int _allow_self_signed)
 {
     static const br_x509_class br_x509_insecure_vtable PROGMEM = {
         sizeof(mb_br_x509_insecure_context),
@@ -1134,14 +1134,14 @@ void ESP8266_SSL_Client::m_br_x509_insecure_init(mb_br_x509_insecure_context *ct
     ctx->allow_self_signed = 0;
 }
 
-void ESP8266_SSL_Client::setTimeout(unsigned long timeout)
+void MB_ESP8266_SSL_Client::setTimeout(unsigned long timeout)
 {
     this->timeout = timeout;
     if (base_client)
         base_client->setTimeout(timeout);
 }
 
-void ESP8266_SSL_Client::m_clearAuthenticationSettings()
+void MB_ESP8266_SSL_Client::m_clearAuthenticationSettings()
 {
     use_insecure = false;
     use_fingerprint = false;
@@ -1151,14 +1151,14 @@ void ESP8266_SSL_Client::m_clearAuthenticationSettings()
     ta = nullptr;
 }
 
-void ESP8266_SSL_Client::setClient(Client *client)
+void MB_ESP8266_SSL_Client::setClient(Client *client)
 {
     base_client = client;
 }
 
 // Returns an error ID and possibly a string (if dest != null) of the last
 // BearSSL reported error.
-int ESP8266_SSL_Client::getLastSSLError(char *dest, size_t len)
+int MB_ESP8266_SSL_Client::getLastSSLError(char *dest, size_t len)
 {
     int err = 0;
     const char *t = PSTR("OK");
@@ -1376,7 +1376,7 @@ int ESP8266_SSL_Client::getLastSSLError(char *dest, size_t len)
     return err;
 }
 
-char *ESP8266_SSL_Client::m_streamLoad(Stream &stream, size_t size)
+char *MB_ESP8266_SSL_Client::m_streamLoad(Stream &stream, size_t size)
 {
     char *dest = (char *)malloc(size + 1);
     if (!dest)
@@ -1395,4 +1395,4 @@ char *ESP8266_SSL_Client::m_streamLoad(Stream &stream, size_t size)
 
 #endif // ESP8266
 
-#endif // ESP8266_SSL_Client_CPP
+#endif // MB_ESP8266_SSL_Client_CPP

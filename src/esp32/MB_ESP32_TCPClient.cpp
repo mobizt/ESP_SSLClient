@@ -1,12 +1,10 @@
 /*
- * The Mobizt ESP32 SSL Client Class, MB_ESP32_SSLClient.cpp v1.0.2
+ * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.cpp v1.0.3
  *
- * Created November 15, 2022
+ * Created December 18, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
- *
- *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -46,12 +44,12 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef MB_ESP32_SSLCLIENT_CPP
-#define MB_ESP32_SSLCLIENT_CPP
+#ifndef MB_ESP32_TCPClient_CPP
+#define MB_ESP32_TCPClient_CPP
 
-#ifdef ESP32
+#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
 
-#include "MB_ESP32_SSLClient.h"
+#include "MB_ESP32_TCPClient.h"
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
 #include <errno.h>
@@ -60,7 +58,7 @@
 #undef write
 #undef read
 
-MB_ESP32_SSLClient::MB_ESP32_SSLClient()
+MB_ESP32_TCPClient::MB_ESP32_TCPClient()
 {
     _ssl = new ssl_ctx;
     ssl_init(_ssl);
@@ -77,7 +75,7 @@ MB_ESP32_SSLClient::MB_ESP32_SSLClient()
     next = NULL;
 }
 
-MB_ESP32_SSLClient::~MB_ESP32_SSLClient()
+MB_ESP32_TCPClient::~MB_ESP32_TCPClient()
 {
     stop();
     _ssl->basic_client = nullptr;
@@ -85,12 +83,13 @@ MB_ESP32_SSLClient::~MB_ESP32_SSLClient()
     _ssl = nullptr;
 }
 
-void MB_ESP32_SSLClient::setClient(Client *client)
+void MB_ESP32_TCPClient::setClient(Client *client, bool enableSSL)
 {
     _ssl->basic_client = client;
+    _isSSL = enableSSL;
 }
 
-MB_ESP32_SSLClient &MB_ESP32_SSLClient::operator=(const MB_ESP32_SSLClient &other)
+MB_ESP32_TCPClient &MB_ESP32_TCPClient::operator=(const MB_ESP32_TCPClient &other)
 {
     stop();
     _ssl->basic_client = other._ssl->basic_client;
@@ -98,7 +97,7 @@ MB_ESP32_SSLClient &MB_ESP32_SSLClient::operator=(const MB_ESP32_SSLClient &othe
     return *this;
 }
 
-void MB_ESP32_SSLClient::stop()
+void MB_ESP32_TCPClient::stop()
 {
     if (!_ssl->basic_client)
         return;
@@ -109,11 +108,11 @@ void MB_ESP32_SSLClient::stop()
         _ssl->basic_client->stop();
 }
 
-int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port)
+int MB_ESP32_TCPClient::connect(IPAddress ip, uint16_t port)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
@@ -122,11 +121,11 @@ int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port)
     return connect(ip, port, _CA_cert, _cert, _private_key);
 }
 
-int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port, int32_t timeout)
+int MB_ESP32_TCPClient::connect(IPAddress ip, uint16_t port, int32_t timeout)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
@@ -134,11 +133,11 @@ int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port, int32_t timeout)
     return connect(ip, port);
 }
 
-int MB_ESP32_SSLClient::connect(const char *host, uint16_t port)
+int MB_ESP32_TCPClient::connect(const char *host, uint16_t port)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
@@ -147,11 +146,11 @@ int MB_ESP32_SSLClient::connect(const char *host, uint16_t port)
     return connect(host, port, _CA_cert, _cert, _private_key);
 }
 
-int MB_ESP32_SSLClient::connect(const char *host, uint16_t port, int32_t timeout)
+int MB_ESP32_TCPClient::connect(const char *host, uint16_t port, int32_t timeout)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
@@ -159,18 +158,18 @@ int MB_ESP32_SSLClient::connect(const char *host, uint16_t port, int32_t timeout
     return connect(host, port);
 }
 
-int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port, const char *CA_cert, const char *cert, const char *private_key)
+int MB_ESP32_TCPClient::connect(IPAddress ip, uint16_t port, const char *CA_cert, const char *cert, const char *private_key)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
     return connect(ip.toString().c_str(), port, CA_cert, cert, private_key);
 }
 
-int MB_ESP32_SSLClient::_connect(const char *host, uint16_t port)
+int MB_ESP32_TCPClient::_connect(const char *host, uint16_t port)
 {
 
     if (!_ssl->basic_client)
@@ -197,69 +196,70 @@ int MB_ESP32_SSLClient::_connect(const char *host, uint16_t port)
     return 1;
 }
 
-int MB_ESP32_SSLClient::connect(const char *host, uint16_t port, const char *CA_cert, const char *cert, const char *private_key)
+int MB_ESP32_TCPClient::connect(const char *host, uint16_t port, const char *CA_cert, const char *cert, const char *private_key)
 {
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
     _withCert = true;
 
-    if (!_connect(host, port))
-        return 0;
-
-    int ret = connect_ssl(_ssl, host, CA_cert, cert, private_key, NULL, NULL, _use_insecure);
-    _lastError = ret;
-    if (ret < 0)
+    if (!_ssl->basic_client->connected())
     {
-        log_e("MB_ESP32_SSLClient Error: upgrade connection, %d", ret);
-        stop();
-        return 0;
+        if (!_connect(host, port))
+            return 0;
     }
+
+    _CA_cert = CA_cert;
+    _cert = cert;
+    _private_key = private_key;
+
+    if (_isSSL && !connectSSL())
+        return 0;
 
     return 1;
 }
 
-int MB_ESP32_SSLClient::connect(IPAddress ip, uint16_t port, const char *pskIdent, const char *psKey)
+int MB_ESP32_TCPClient::connect(IPAddress ip, uint16_t port, const char *pskIdent, const char *psKey)
 {
     return connect(ip.toString().c_str(), port, pskIdent, psKey);
 }
 
-int MB_ESP32_SSLClient::connect(const char *host, uint16_t port, const char *pskIdent, const char *psKey)
+int MB_ESP32_TCPClient::connect(const char *host, uint16_t port, const char *pskIdent, const char *psKey)
 {
 
     if (!_ssl->basic_client)
     {
-        ssl_client_debug_pgm_send_cb(_ssl, mb_ssl_client_str_1);
+        ssl_client_print( mb_ssl_client_str_1);
         return 0;
     }
 
     _withKey = true;
 
-    log_v("MB_ESP32_SSLClient connect with PSK");
+    log_v("MB_ESP32_TCPClient connect with PSK");
 
-    if (!_connect(host, port))
-        return 0;
-
-    int ret = connect_ssl(_ssl, host, NULL, NULL, NULL, pskIdent, psKey, _use_insecure);
-    _lastError = ret;
-    if (ret < 0)
+    if (!_ssl->basic_client->connected())
     {
-        log_e("MB_ESP32_SSLClient Error: upgrade connection, %d", ret);
-        stop();
-        return 0;
+        if (!_connect(host, port))
+            return 0;
     }
+    _pskIdent = pskIdent;
+    _psKey = psKey;
+
+    if (_isSSL && !connectSSL())
+        return 0;
 
     return 1;
 }
 
-bool MB_ESP32_SSLClient::connectSSL()
+bool MB_ESP32_TCPClient::connectSSL()
 {
-
     if (!_ssl->basic_client || !_ssl->basic_client->connected())
         return false;
+
+    _isSSL = true;
 
     int ret = 0;
     if (_withCert)
@@ -270,7 +270,7 @@ bool MB_ESP32_SSLClient::connectSSL()
     _lastError = ret;
     if (ret < 0)
     {
-        log_e("MB_ESP32_SSLClient Error: upgrade connection, %d", ret);
+        log_e("MB_ESP32_TCPClient Error: SSL connection, %d", ret);
         stop();
         return 0;
     }
@@ -278,7 +278,7 @@ bool MB_ESP32_SSLClient::connectSSL()
     return 1;
 }
 
-int MB_ESP32_SSLClient::peek()
+int MB_ESP32_TCPClient::peek()
 {
     if (!_ssl->basic_client)
         return 0;
@@ -289,12 +289,12 @@ int MB_ESP32_SSLClient::peek()
     return _ssl->basic_client->peek();
 }
 
-size_t MB_ESP32_SSLClient::write(uint8_t data)
+size_t MB_ESP32_TCPClient::write(uint8_t data)
 {
     return write(&data, 1);
 }
 
-int MB_ESP32_SSLClient::read()
+int MB_ESP32_TCPClient::read()
 {
     if (!_ssl->basic_client)
         return 0;
@@ -308,7 +308,7 @@ int MB_ESP32_SSLClient::read()
     return data;
 }
 
-size_t MB_ESP32_SSLClient::write(const uint8_t *buf, size_t size)
+size_t MB_ESP32_TCPClient::write(const uint8_t *buf, size_t size)
 {
     if (!_ssl->basic_client)
         return 0;
@@ -316,7 +316,7 @@ size_t MB_ESP32_SSLClient::write(const uint8_t *buf, size_t size)
     if (!_ssl->basic_client->connected())
         return 0;
 
-    int res = send_ssl_data(_ssl, buf, size);
+    int res = _isSSL ? send_ssl_data(_ssl, buf, size) : (int)_ssl->basic_client->write(buf, size);
     if (res < 0)
     {
         stop();
@@ -325,7 +325,7 @@ size_t MB_ESP32_SSLClient::write(const uint8_t *buf, size_t size)
     return res;
 }
 
-int MB_ESP32_SSLClient::read(uint8_t *buf, size_t size)
+int MB_ESP32_TCPClient::read(uint8_t *buf, size_t size)
 {
     if (!_ssl->basic_client)
         return 0;
@@ -333,7 +333,7 @@ int MB_ESP32_SSLClient::read(uint8_t *buf, size_t size)
     if (!_ssl->basic_client->connected())
         return 0;
 
-    int res = get_ssl_receive(_ssl, buf, size);
+    int res = _isSSL ? get_ssl_receive(_ssl, buf, size) : (int)_ssl->basic_client->read(buf, size);
 
     if (res < 0)
         stop();
@@ -341,7 +341,7 @@ int MB_ESP32_SSLClient::read(uint8_t *buf, size_t size)
     return res;
 }
 
-int MB_ESP32_SSLClient::available()
+int MB_ESP32_TCPClient::available()
 {
     if (!_ssl->basic_client)
         return 0;
@@ -349,7 +349,7 @@ int MB_ESP32_SSLClient::available()
     if (!_ssl->basic_client->connected())
         return 0;
 
-    int res = data_to_read(_ssl);
+    int res = _isSSL ? data_to_read(_ssl) : (int)_ssl->basic_client->available();
 
     if (res < 0)
         stop();
@@ -357,7 +357,7 @@ int MB_ESP32_SSLClient::available()
     return res;
 }
 
-uint8_t MB_ESP32_SSLClient::connected()
+uint8_t MB_ESP32_TCPClient::connected()
 {
 
     if (!_ssl->basic_client)
@@ -366,7 +366,7 @@ uint8_t MB_ESP32_SSLClient::connected()
     return _ssl->basic_client->connected();
 }
 
-void MB_ESP32_SSLClient::setInsecure()
+void MB_ESP32_TCPClient::setInsecure()
 {
     _CA_cert = NULL;
     _cert = NULL;
@@ -376,28 +376,33 @@ void MB_ESP32_SSLClient::setInsecure()
     _use_insecure = true;
 }
 
-void MB_ESP32_SSLClient::setCACert(const char *rootCA)
+void MB_ESP32_TCPClient::enableSSL(bool enable)
+{
+    _isSSL = enable;
+}
+
+void MB_ESP32_TCPClient::setCACert(const char *rootCA)
 {
     _CA_cert = rootCA;
 }
 
-void MB_ESP32_SSLClient::setCertificate(const char *client_ca)
+void MB_ESP32_TCPClient::setCertificate(const char *client_ca)
 {
     _cert = client_ca;
 }
 
-void MB_ESP32_SSLClient::setPrivateKey(const char *private_key)
+void MB_ESP32_TCPClient::setPrivateKey(const char *private_key)
 {
     _private_key = private_key;
 }
 
-void MB_ESP32_SSLClient::setPreSharedKey(const char *pskIdent, const char *psKey)
+void MB_ESP32_TCPClient::setPreSharedKey(const char *pskIdent, const char *psKey)
 {
     _pskIdent = pskIdent;
     _psKey = psKey;
 }
 
-bool MB_ESP32_SSLClient::verify(const char *fp, const char *domain_name)
+bool MB_ESP32_TCPClient::verify(const char *fp, const char *domain_name)
 {
     if (!_ssl)
         return false;
@@ -405,7 +410,7 @@ bool MB_ESP32_SSLClient::verify(const char *fp, const char *domain_name)
     return verify_ssl_fingerprint(_ssl, fp, domain_name);
 }
 
-char *MB_ESP32_SSLClient::_streamLoad(Stream &stream, size_t size)
+char *MB_ESP32_TCPClient::_streamLoad(Stream &stream, size_t size)
 {
     char *dest = (char *)malloc(size + 1);
     if (!dest)
@@ -422,7 +427,7 @@ char *MB_ESP32_SSLClient::_streamLoad(Stream &stream, size_t size)
     return dest;
 }
 
-bool MB_ESP32_SSLClient::loadCACert(Stream &stream, size_t size)
+bool MB_ESP32_TCPClient::loadCACert(Stream &stream, size_t size)
 {
     char *dest = _streamLoad(stream, size);
     bool ret = false;
@@ -434,7 +439,7 @@ bool MB_ESP32_SSLClient::loadCACert(Stream &stream, size_t size)
     return ret;
 }
 
-bool MB_ESP32_SSLClient::loadCertificate(Stream &stream, size_t size)
+bool MB_ESP32_TCPClient::loadCertificate(Stream &stream, size_t size)
 {
     char *dest = _streamLoad(stream, size);
     bool ret = false;
@@ -446,7 +451,7 @@ bool MB_ESP32_SSLClient::loadCertificate(Stream &stream, size_t size)
     return ret;
 }
 
-bool MB_ESP32_SSLClient::loadPrivateKey(Stream &stream, size_t size)
+bool MB_ESP32_TCPClient::loadPrivateKey(Stream &stream, size_t size)
 {
     char *dest = _streamLoad(stream, size);
     bool ret = false;
@@ -458,7 +463,7 @@ bool MB_ESP32_SSLClient::loadPrivateKey(Stream &stream, size_t size)
     return ret;
 }
 
-int MB_ESP32_SSLClient::lastError(char *buf, const size_t size)
+int MB_ESP32_TCPClient::lastError(char *buf, const size_t size)
 {
     if (!_lastError)
     {
@@ -468,19 +473,13 @@ int MB_ESP32_SSLClient::lastError(char *buf, const size_t size)
     return _lastError;
 }
 
-void MB_ESP32_SSLClient::setHandshakeTimeout(unsigned long handshake_timeout)
+void MB_ESP32_TCPClient::setHandshakeTimeout(unsigned long handshake_timeout)
 {
     if (_ssl)
         _ssl->handshake_timeout = handshake_timeout * 1000;
 }
 
-void MB_ESP32_SSLClient::setDebugCB(DebugMsgCallback *cb)
-{
-    if (_ssl)
-        _ssl->_debugCallback = cb;
-}
-
-void MB_ESP32_SSLClient::flush()
+void MB_ESP32_TCPClient::flush()
 {
     if (!_ssl->basic_client)
         return;
@@ -491,4 +490,4 @@ void MB_ESP32_SSLClient::flush()
 
 #endif // ESP32
 
-#endif // MB_ESP32_SSLClient_CPP
+#endif // MB_ESP32_TCPClient_CPP

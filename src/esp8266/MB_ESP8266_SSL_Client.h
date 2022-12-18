@@ -1,7 +1,7 @@
 
 /**
  *
- * The Network Upgradable BearSSL Client Class, ESP8266_SSL_Client.h v2.0.0
+ * The Network Upgradable BearSSL Client Class, MB_ESP8266_SSL_Client.h v2.0.0
  *
  * Created July 20, 2022
  *
@@ -51,8 +51,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef ESP8266_SSL_Client_H
-#define ESP8266_SSL_Client_H
+#ifndef MB_ESP8266_SSL_Client_H
+#define MB_ESP8266_SSL_Client_H
 
 #if defined(ESP8266)
 
@@ -60,21 +60,23 @@
 #include <memory>
 #include <Client.h>
 #include <Stream.h>
-#include "MB_BearSSL.h"
+#include "MB_ESP8266_BearSSL.h"
 #include "PolledTimeout.h"
 #if defined(ESP8266_CORE_SDK_V3_X_X)
 #include <umm_malloc/umm_heap_select.h>
 #endif
 
-class ESP8266_SSL_Client
+#include "../ESP_SSLClient_FS.h"
+
+class MB_ESP8266_SSL_Client
 {
 
 public:
-    ESP8266_SSL_Client();
-    ESP8266_SSL_Client(const ESP8266_SSL_Client &rhs) = delete;
-    ~ESP8266_SSL_Client();
+    MB_ESP8266_SSL_Client();
+    MB_ESP8266_SSL_Client(const MB_ESP8266_SSL_Client &rhs) = delete;
+    ~MB_ESP8266_SSL_Client();
 
-    ESP8266_SSL_Client &operator=(const ESP8266_SSL_Client &) = delete;
+    MB_ESP8266_SSL_Client &operator=(const MB_ESP8266_SSL_Client &) = delete;
 
     void setClient(Client *client);
     void setTimeout(unsigned long timeout);
@@ -284,4 +286,4 @@ private:
 
 #endif // ESP8266
 
-#endif // ESP8266_SSL_Client_H
+#endif // MB_ESP8266_SSL_Client_H

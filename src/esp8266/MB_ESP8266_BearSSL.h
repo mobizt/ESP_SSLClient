@@ -50,8 +50,8 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef MB_BEARSSL_H_
-#define MB_BEARSSL_H_
+#ifndef MB_ESP8266_BEARSSL_H_
+#define MB_ESP8266_BEARSSL_H_
 
 #if defined(ESP8266)
 
@@ -65,7 +65,7 @@
 #endif
 #endif
 
-#include "MB_ESP8266_SSLClient_FS.h"
+#include "../ESP_SSLClient_FS.h"
 
 #include <Arduino.h>
 #include <bearssl/bearssl.h>
@@ -79,9 +79,9 @@
 #include <ctype.h>
 #include <vector>
 #include <algorithm>
+#include "../ESP_SSLClient_FS.h"
 
-
-#ifdef MB_ESP8266_SSLCLIENT_ENABLE_DEBUG
+#ifdef ESP_SSLCLIENT_ENABLE_DEBUG
 #define MB_ESP8266_SSLCLIENT_DEBUG_PRINTF Serial.printf
 #else
 #define MB_ESP8266_SSLCLIENT_DEBUG_PRINTF(...)
@@ -186,7 +186,7 @@ typedef uint8_t BearSSL_ServerSession[100];
 // Use with BearSSL::WiFiServerSecure::setCache
 class BearSSL_ServerSessions
 {
-    friend class ESP8266_SSL_Client;
+    friend class MB_ESP8266_SSL_Client;
 
 public:
     // Uses the given buffer to cache the given number of sessions and initializes it.
@@ -236,7 +236,7 @@ private:
 // to accelerate the TLS handshake
 class BearSSL_Session
 {
-    friend class ESP8266_SSL_Client;
+    friend class MB_ESP8266_SSL_Client;
 
 public:
     BearSSL_Session() { memset(&_session, 0, sizeof(_session)); }

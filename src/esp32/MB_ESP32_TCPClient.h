@@ -1,12 +1,10 @@
 /*
- * The Mobizt ESP32 SSL Client Class, MB_ESP32_SSLClient.h v1.0.2
+ * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.h v1.0.3
  *
- * Created November 15, 2022
+ * Created December 18, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
- *
- *
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -46,24 +44,24 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#ifndef MB_ESP32_SSLCLIENT_H
-#define MB_ESP32_SSLCLIENT_H
+#ifndef MB_ESP32_TCPClient_H
+#define MB_ESP32_TCPClient_H
 
-#ifdef ESP32
+#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
+#if defined(ARDUINO)
+#include <Arduino.h>
+#include <IPAddress.h>
+#endif
 
-#include "Arduino.h"
-#include "IPAddress.h"
-#include "ESP32_SSL_Client.h"
-#include <WiFiClient.h>
+#include "MB_ESP32_SSL_Client.h"
+
 #include <string>
 
 
-typedef void (*DebugMsgCallback)(PGM_P msg, bool newLine);
+#define WCS_CLASS MB_ESP32_SSL_Client
+#define WC_CLASS MB_ESP32_SSL_Client
 
-#define WCS_CLASS ESP32_SSL_Client
-#define WC_CLASS ESP32_SSL_Client
-
-class MB_ESP32_SSLClient : public WCS_CLASS, public Client
+class MB_ESP32_TCPClient : public WCS_CLASS, public Client
 {
 
 protected:
@@ -82,20 +80,23 @@ protected:
     const char *_pskIdent; // identity for PSK cipher suites
     const char *_psKey;    // key in hex for PSK cipher suites
 
+    bool _isSSL = false;
+
 public:
-    MB_ESP32_SSLClient *next;
+    MB_ESP32_TCPClient *next;
 
     // The default class constructor
-    MB_ESP32_SSLClient();
+    MB_ESP32_TCPClient();
 
     // The class deconstructor
-    ~MB_ESP32_SSLClient();
+    ~MB_ESP32_TCPClient();
 
     /**
      * Set the client.
-     * @param client The Client interface.
+     * @param client The pointer to Client interface.
+     * @param enableSSL The ssl option; true for enable, false for disable.
      */
-    void setClient(Client *client);
+    void setClient(Client *client, bool enableSSL = true);
 
     /**
      * Connect to server.
@@ -249,6 +250,12 @@ public:
     void setInsecure(); // Don't validate the chain, just accept whatever is given.  VERY INSECURE!
 
     /**
+     * Enable/disable the SSL layer transport.
+     * @param enable The enable option; true for enable, false to disable.
+     */
+    void enableSSL(bool enable);
+
+    /**
      * Set the Pre Shared Key and its identity.
      * @param pskIdent The Pre Shared Key identity.
      * @param psKey The Pre Shared Key.
@@ -320,12 +327,6 @@ public:
     int setTimeout(uint32_t seconds) { return 0; }
 
     /**
-     * Set the debug callback.
-     * @param cb The callback function.
-     */
-    void setDebugCB(DebugMsgCallback *cb);
-
-    /**
      * Upgrade the current connection by setting up the SSL and perform the SSL handshake.
      *
      * @return operating result.
@@ -337,7 +338,7 @@ public:
         return connected();
     }
 
-    MB_ESP32_SSLClient &operator=(const MB_ESP32_SSLClient &other);
+    MB_ESP32_TCPClient &operator=(const MB_ESP32_TCPClient &other);
     bool operator==(const bool value)
     {
         return bool() == value;
@@ -348,9 +349,9 @@ public:
         return bool() != value;
     }
 
-    bool operator==(const MB_ESP32_SSLClient &);
+    bool operator==(const MB_ESP32_TCPClient &);
     
-    bool operator!=(const MB_ESP32_SSLClient &rhs)
+    bool operator!=(const MB_ESP32_TCPClient &rhs)
     {
         return !this->operator==(rhs);
     };
@@ -368,4 +369,4 @@ private:
 
 #endif // ESP32
 
-#endif // MB_ESP32_SSLCLIENT_H
+#endif // MB_ESP32_TCPClient_H

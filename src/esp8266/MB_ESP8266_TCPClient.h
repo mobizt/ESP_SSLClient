@@ -1,6 +1,6 @@
 /**
  *
- * The Mobizt ESP8266 SSL Client Class, MB_ESP8266_SSLClient.h v1.0.1
+ * The Mobizt ESP8266 TCP Client Class, MB_ESP8266_TCPClient.h v1.0.1
  *
  * Created November 15, 2022
  *
@@ -26,34 +26,34 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MB_ESP8266_SSLCLIENT_H
-#define MB_ESP8266_SSLCLIENT_H
+#ifndef MB_ESP8266_TCPClient_H
+#define MB_ESP8266_TCPClient_H
 
 #ifdef ESP8266
 
 #include <vector>
 #include <WiFiClient.h>
-#include "MB_BearSSL.h"
+#include "MB_ESP8266_BearSSL.h"
 #include <StackThunk.h>
 
+#include "MB_ESP8266_SSL_Client.h"
 
-#include "ESP8266_SSL_Client.h"
+#define WCS_CLASS MB_ESP8266_SSL_Client
 
-#define WCS_CLASS ESP8266_SSL_Client
-
-class MB_ESP8266_SSLClient : public Client, public WCS_CLASS
+class MB_ESP8266_TCPClient : public Client, public WCS_CLASS
 {
   friend class ESP8266_TCP_Client;
 
 public:
-  MB_ESP8266_SSLClient();
-  ~MB_ESP8266_SSLClient();
+  MB_ESP8266_TCPClient();
+  ~MB_ESP8266_TCPClient();
 
   /**
    * Set the client.
-   * @param client The Client interface.
+   * @param client The pointer to Client interface.
+   * @param enableSSL The ssl option; true for enable, false for disable.
    */
-  void setClient(Client *client);
+  void setClient(Client *client, bool enableSSL = true);
 
   /**
    * Connect to server.
@@ -121,7 +121,13 @@ public:
   /**
    * No certificate chain validation.
    */
-  void setInSecure();
+  void setInsecure();
+
+  /**
+   * Enable/disable the SSL layer transport.
+   * @param enable The enable option; true for enable, false to disable.
+   */
+  void enableSSL(bool enable);
 
   /**
    * Upgrade the current connection by setting up the SSL and perform the SSL handshake.
@@ -207,8 +213,9 @@ private:
   uint16_t _port;
 
   Client *_basic_client = nullptr;
+  bool _isSSL = false;
 };
 
 #endif /* ESP8266 */
 
-#endif /* MB_ESP8266_SSLCLIENT_H */
+#endif /* MB_ESP8266_TCPClient_H */

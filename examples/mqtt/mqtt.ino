@@ -1,0 +1,130 @@
+
+#include <Arduino.h>
+#if defined(ESP32)
+#include <WiFi.h>
+#elif defined(ESP8266)
+#include <ESP8266WiFi.h>
+#endif
+#include <ESP_SSLClient.h>
+
+// https://github.com/arduino-libraries/ArduinoMqttClient
+#include <ArduinoMqttClient.h>
+
+#define WIFI_SSID "WIFI_AP"
+#define WIFI_PASSWORD "WIFI_PASSWORD"
+
+ESP_SSLClient ssl_client;
+WiFiClient basic_client;
+
+MqttClient mqttClient(ssl_client);
+
+unsigned long lastMillis = 0;
+
+int count = 0;
+
+const char broker[] = "test.mosquitto.org";
+int port = 8883;
+const char topic[] = "arduino/simple";
+
+const long interval = 3000;
+unsigned long previousMillis = 0;
+bool mqttReady = false;
+
+void setup()
+{
+
+  Serial.begin(115200);
+  Serial.println();
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(300);
+  }
+  Serial.println();
+  Serial.print("Connected with IP: ");
+  Serial.println(WiFi.localIP());
+  Serial.println();
+
+  // ignore server ssl certificate verification
+  ssl_client.setInsecure();
+
+  // assign the basic client
+  ssl_client.setClient(&basic_client);
+
+  Serial.print("Attempting to connect to the MQTT broker over ssl: ");
+  Serial.println(broker);
+
+  if (!mqttClient.connect(broker, port))
+  {
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqttClient.connectError());
+    return;
+  }
+
+  Serial.println("You're connected to the MQTT broker!");
+  Serial.println();
+
+  Serial.print("Subscribing to topic: ");
+  Serial.println(topic);
+  Serial.println();
+
+  // subscribe to a topic
+  mqttClient.subscribe(topic);
+
+  // topics can be unsubscribed using:
+  // mqttClient.unsubscribe(topic);
+
+  Serial.print("Waiting for messages on topic: ");
+  Serial.println(topic);
+  Serial.println();
+  mqttReady = true;
+}
+
+void loop()
+{
+
+  if (!mqttReady)
+    return;
+
+  int messageSize = mqttClient.parseMessage();
+  if (messageSize)
+  {
+    // we received a message, print out the topic and contents
+    Serial.print("Received a message with topic '");
+    Serial.print(mqttClient.messageTopic());
+    Serial.print("', length ");
+    Serial.print(messageSize);
+    Serial.println(" bytes:");
+
+    // use the Stream interface to print the contents
+    while (mqttClient.available())
+    {
+      Serial.print((char)mqttClient.read());
+    }
+    Serial.println();
+
+    Serial.println();
+  }
+
+  mqttClient.poll();
+
+  if (millis() - lastMillis > interval)
+  {
+    lastMillis = millis();
+
+    Serial.print("Sending message to topic: ");
+
+    Serial.println(topic);
+
+    // send message, the Print interface can be used to set the message contents
+    mqttClient.beginMessage(topic);
+
+    mqttClient.print(count);
+
+    mqttClient.endMessage();
+    count++;
+  }
+}
