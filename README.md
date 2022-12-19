@@ -64,7 +64,7 @@ The Arduino Client library buffer size should be large enough (1k or more) for t
 
 ## Known Issues
 
-Due to unexpected behavior in ESP32 Arduino Client class when using in HTTP request that some data at the end of transaction can be lost especially large response payload case. I may happen after server close the connection after "Connection: Close" header was sent. This issue happens in ESP32 Arduino Core SDK v2.0.x.
+Due to unexpected behavior in ESP32 Arduino Client class when using in HTTP request that some data at the end of transaction can be lost especially large response payload case. It may happen after server close the connection after "Connection: Close" header was sent. This issue happens in ESP32 Arduino Core SDK v2.0.x.
 
 This issue may not exist in case small response payload unless large response payload case that the Arduino Client closed before the payload reading to be completed.
 
