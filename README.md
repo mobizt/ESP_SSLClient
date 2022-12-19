@@ -4,7 +4,7 @@ The upgradable SSL Client for ESP8266 and ESP32 that supports many network inter
 
 This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
 
-This library is reliable and stable SSL Client for ESP32 and ESP8266 that suitable for large data transmission via any low speed SPI Arduino Network Interface Client device.
+This library is reliable and stable SSL Client for ESP32 and ESP8266 that is suitable for large data transmission via any slow speed SPI Arduino Network Interface device.
 
 The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
 
@@ -62,7 +62,24 @@ The Arduino Client library buffer size should be large enough (1k or more) for t
 
 ```
 
-MIT License
+## Known Issues
+
+Due to unexpected behavior in ESP32 Arduino Client class when using in HTTP request that some data at the end of transaction can be lost especially large response payload case. I may happen after server close the connection after "Connection: Close" header was sent. This issue happens in ESP32 Arduino Core SDK v2.0.x.
+
+This issue may not exist in case small response payload unless large response payload case that the Arduino Client closed before the payload reading to be completed.
+
+You can avoid this issue by keeping the connection open by sending "Connection: Keep-Alive" header in HTTP request or with content type header "text/event-stream" in SSE API.
+
+
+## Functions Interfaces
+
+The ESP_SSLClient available functions are similare to the WiFiClientSecure.h class in ESP32 and ESP8266.
+
+The PrivateKey, X509List and CertStoreBase classes for ESP8266 will be renamed to BearSSL_PrivateKey, BearSSL_X509List and BearSSL_CertStoreBase respectively.
+
+For ESP32, the certificate bundle is not currenty supported.
+
+## MIT License
 
 Copyright (c) 2022 mobizt
 
