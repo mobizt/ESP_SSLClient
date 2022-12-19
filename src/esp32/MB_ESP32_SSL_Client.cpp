@@ -1,7 +1,7 @@
 /*
- * ESP32 SSL Client v2.0.3
+ * ESP32 SSL Client v2.0.4
  *
- * Created December 18, 2022
+ * Created December 19, 2022
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -78,34 +78,6 @@ void MB_ESP32_SSL_Client::ssl_init(ssl_ctx *ssl)
 
 namespace mb_basic_client_io
 {
-    static int client_read(Client *client, const unsigned char *buf, size_t len, uint32_t timeout, bool blockingRead)
-    {
-        int ret = 0;
-        if (blockingRead)
-        {
-            // We wait the required available data
-            unsigned long ts = millis();
-
-            // The timeout is the socket timeout which is not aplicable for our case.
-            // We need to check for its value for 0 (required data and wait forever) or other values for specific waiting
-            if (timeout == 0 /* SSL engine required more data and wait forever? */)
-                timeout = 1000; /* we can't wait forever but set the specific waiting time (1 sec) for our basic client data polling */
-
-            // polling read the required data with specific time out
-            while (!ret && millis() - ts < timeout)
-                ret = client->read((uint8_t *)buf, len);
-        }
-        else
-            ret = client->read((uint8_t *)buf, len);
-
-        // This is required for ESP32 when continuousely reading large data or multiples chunks from slow SPI
-        // basic client device, otherwise the connection may die at some point
-        if (ret)
-            delay(0);
-
-        return ret;
-    }
-
     /**
      * \brief          Callback type: send data on the network.
      *
@@ -159,53 +131,37 @@ namespace mb_basic_client_io
      */
     static int net_recv_timeout(void *ctx, unsigned char *buf, size_t len, uint32_t timeout)
     {
-        // This should not return any error before we accessing data from basic client rx buffer.
-
-        // We will return MBEDTLS_ERR_NET_CONN_RESET or MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY
-        // only when the connection was closed with no data is available in the basic client rx buffer.
-
-        // As the TCP socket is not reachable from basic client, the following code flow
-        // is suitable for reading the incoming data from basic client
-        // and writing that data to the mbedTLS buffer for further processing.
-
-        // static cast the basic client from the ssl context
         Client *basic_client = (Client *)ctx;
 
         if (!basic_client)
             return -1;
 
-        // If timeout value of this callback is zero, it indicated that the the SSL engine
-        // looks for the next required available data which should be available.
-        // As we work with basic client instead of socket which is unreachable, we will be
-        // polling read the basic client data with the time out instead of waiting forever
-        // in case socket and return MBEDTLS_ERR_SSL_WANT_READ in case of error or timed out.
+        int read = 0;
 
-        // The 16384 bytes IO buffers of mbedTLS were allocated and cannot be changed,
-        // the len can be as large as its buffer size.
-        // https://github.com/Mbed-TLS/mbedtls/issues/1203
-        // https://github.com/Mbed-TLS/mbedtls/pull/1208
-
-        for (int i = 0; i < 2; i++)
+        if (len > 2048)
         {
-            // first, non-blocking data reading from basic client, then blocking read if it failed
-            int ret = mb_basic_client_io::client_read(basic_client, buf, len, timeout, i == 0 ? false /* non-blocking read */
-                                                                                              : true /* blocking read */);
-            // data is already in mbedTLS buffer? return the amount of available data
-            // the return value may less than the required data buffer length (len)
-            if (ret)
-                return ret;
+            if (timeout == 0)
+                timeout = 5000;
+            unsigned long tm = millis();
+            while (millis() - tm < timeout && read < len)
+            {
+                // This is required for ESP32 when continuousely reading large data or multiples chunks from slow SPI
+                // basic client device, otherwise the connection may die at some point
+                delay(0);
+                int r = basic_client->read();
+                if (r > -1)
+                    buf[read++] = r;
+            }
         }
+        else
+            read = basic_client->read(buf, len);
 
-        // If no data existed in basic client rx buffer and its connection was already closed
-        // now freeing all the allocated memories by returning MBEDTLS_ERR_NET_CONN_RESET or
-        // MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY.
+        if (read)
+            return read;
 
-        // Don't return MBEDTLS_ERR_NET_CONN_RESET or MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY without checking
-        // the available rx buffer data.
         if (!basic_client->connected() && basic_client->available() == 0)
             return MBEDTLS_ERR_NET_CONN_RESET;
 
-        // need more data
         return MBEDTLS_ERR_SSL_WANT_READ;
     }
 };
