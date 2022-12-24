@@ -183,7 +183,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
     ssl_client_print(mb_ssl_client_str_2);
 
-    log_v(mb_ssl_client_str_2 /* "Seeding the random number generator" */);
+    log_v("Seeding the random number generator");
     mbedtls_entropy_init(&ssl->entropy_ctx);
 
     ret = mbedtls_ctr_drbg_seed(&ssl->drbg_ctx, mbedtls_entropy_func, &ssl->entropy_ctx, (const unsigned char *)custom_str, strlen(custom_str));
@@ -195,7 +195,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
     ssl_client_print(mb_ssl_client_str_3);
 
-    log_v(mb_ssl_client_str_3 /* "Setting up the SSL/TLS structure..." */);
+    log_v("Setting up the SSL/TLS structure...");
 
     if ((ret = mbedtls_ssl_config_defaults(&ssl->ssl_conf, MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
     {
@@ -211,12 +211,12 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
         ssl_client_print(mb_ssl_client_str_15);
 
         mbedtls_ssl_conf_authmode(&ssl->ssl_conf, MBEDTLS_SSL_VERIFY_NONE);
-        log_i(mb_ssl_client_str_15 /* "WARNING: Skipping SSL Verification. INSECURE!" */);
+        log_i("WARNING: Skipping SSL Verification. INSECURE!");
     }
     else if (rootCABuff != NULL)
     {
         ssl_client_print(mb_ssl_client_str_4);
-        log_v(mb_ssl_client_str_4 /* "Loading CA cert" */);
+        log_v("Loading CA cert");
 
         mbedtls_x509_crt_init(&ssl->ca_cert);
         mbedtls_ssl_conf_authmode(&ssl->ssl_conf, MBEDTLS_SSL_VERIFY_REQUIRED);
@@ -234,7 +234,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
     else if (pskIdent != NULL && psKey != NULL)
     {
         ssl_client_print(mb_ssl_client_str_5);
-        log_v(mb_ssl_client_str_5 /* "Setting up PSK" */);
+        log_v("Setting up PSK");
         // convert PSK from hex to binary
         if ((strlen(psKey) & 1) != 0 || strlen(psKey) > 2 * MBEDTLS_PSK_MAX_LEN)
         {
@@ -296,7 +296,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
         ssl_client_print(mb_ssl_client_str_8);
 
-        log_v(mb_ssl_client_str_8 /* "Loading CRT cert" */);
+        log_v("Loading CRT cert");
 
         ret = mbedtls_x509_crt_parse(&ssl->client_cert, (const unsigned char *)cli_cert, strlen(cli_cert) + 1);
         if (ret < 0)
@@ -309,7 +309,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
         ssl_client_print(mb_ssl_client_str_9);
 
-        log_v(mb_ssl_client_str_9 /* "Loading private key" */);
+        log_v("Loading private key");
         ret = mbedtls_pk_parse_key(&ssl->client_key, (const unsigned char *)cli_key, strlen(cli_key) + 1, NULL, 0);
 
         if (ret != 0)
@@ -323,7 +323,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
     ssl_client_print(mb_ssl_client_str_10);
 
-    log_v(mb_ssl_client_str_10 /* "Setting hostname for TLS session..." */);
+    log_v("Setting hostname for TLS session...");
 
     // Hostname set here should match CN in server certificate
     if ((ret = mbedtls_ssl_set_hostname(&ssl->ssl_ctx, host)) != 0)
@@ -344,7 +344,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
 
     ssl_client_print(mb_ssl_client_str_11);
 
-    log_v(mb_ssl_client_str_11 /* "Performing the SSL/TLS handshake..." */);
+    log_v("Performing the SSL/TLS handshake...");
     unsigned long handshake_start_time = millis();
     while ((ret = mbedtls_ssl_handshake(&ssl->ssl_ctx)) != 0)
     {
@@ -373,7 +373,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
     }
     ssl_client_print(mb_ssl_client_str_12);
 
-    log_v(mb_ssl_client_str_12 /* "Verifying peer X.509 certificate..." */);
+    log_v("Verifying peer X.509 certificate...");
 
     if ((flags = mbedtls_ssl_get_verify_result(&ssl->ssl_ctx)) != 0)
     {
@@ -385,7 +385,7 @@ int MB_ESP32_SSL_Client::connect_ssl(ssl_ctx *ssl, const char *host, const char 
     }
     else
     {
-        log_v(F("Certificate verified."));
+        log_v("Certificate verified.");
     }
 
     if (rootCABuff != NULL)
@@ -551,7 +551,7 @@ bool MB_ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, c
 
     if (!crt)
     {
-        log_d(F("could not fetch peer certificate"));
+        log_d("could not fetch peer certificate");
         return false;
     }
 
@@ -566,7 +566,7 @@ bool MB_ESP32_SSL_Client::verify_ssl_fingerprint(ssl_ctx *ssl, const char *fp, c
     // Check if fingerprints match
     if (memcmp(fingerprint_local, fingerprint_remote, 32))
     {
-        log_d(F("fingerprint doesn't match"));
+        log_d("fingerprint doesn't match");
         return false;
     }
 
