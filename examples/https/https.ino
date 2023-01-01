@@ -1,3 +1,13 @@
+/**
+ * This example shows how to connect to server via https using the SSL client.
+ *
+ * Email: suwatchai@outlook.com
+ *
+ * Github: https://github.com/mobizt/ESP_SSLSClient
+ *
+ * Copyright (c) 2023 mobizt
+ *
+ */
 
 #include <Arduino.h>
 #if defined(ESP32)

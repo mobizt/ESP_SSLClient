@@ -1,4 +1,13 @@
-
+/**
+ * This example shows how to upgrade from http connection to https connection.
+ *
+ * Email: suwatchai@outlook.com
+ *
+ * Github: https://github.com/mobizt/ESP_SSLSClient
+ *
+ * Copyright (c) 2023 mobizt
+ *
+ */
 #include <Arduino.h>
 #if defined(ESP32)
 #include <WiFi.h>
