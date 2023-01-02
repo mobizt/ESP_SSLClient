@@ -1,11 +1,13 @@
 /**
  *
- * The ESP SSL Client Class, ESP_SSLClient.h v1.0.4
+ * The TCP Client Class that supports external network interfaces for ESP8266 and Raspberry Pi v1.0.0
+ * 
+ * This work is based on Arduino-Pico https://github.com/earlephilhower/arduino-pico by Earle F. Philhower.
  *
- * Created December 19, 2022
+ * Created january 2, 2023
  *
  * The MIT License (MIT)
- * Copyright (c) 2022 K. Suwatchai (Mobizt)
+ * Copyright (c) 2023 K. Suwatchai (Mobizt)
  *
  *
  * Permission is hereby granted, free of charge, to any person returning a copy of
@@ -26,26 +28,24 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef ESP_SSLCLIENT_H
-#define ESP_SSLCLIENT_H
+#ifndef BSSL_SSLCLIENT_H 
+#define BSSL_SSLCLIENT_H
 
-#include "ESP_SSLClient_FS.h"
+#include "BSSL_SSLClient_FS.h"
 
-#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
-#include "esp32/MB_ESP32_TCPClient.h"
-#define MB_ESP_TCP_CLIENT MB_ESP32_TCPClient
-#elif defined(ESP8266) || defined(USE_BSSL_SSL_ENGINE)
-#include "esp8266/BSSL_SSLClient.h"
-#define MB_ESP_TCP_CLIENT BSSL_SSLClient
-#endif
+#if defined(USE_BSSL_SSL_ENGINE)
 
-class ESP_SSLClient : public MB_ESP_TCP_CLIENT
+#include "MB_BSSL_TCPClient.h"
+
+class BSSL_SSLClient : public MB_BSSL_TCPClient
 {
 private:
     
 public:
-    ESP_SSLClient(){};
-    ~ESP_SSLClient(){};
+    BSSL_SSLClient(){};
+    ~BSSL_SSLClient(){};
 };
+
+#endif
 
 #endif

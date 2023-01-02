@@ -1,6 +1,9 @@
 /**
  * This example shows how to connect to server via https using the SSL client.
  *
+ * This example works on the Arduino-Pico SDK from Earle F. Philhower.
+ * https://github.com/earlephilhower/arduino-pico
+ *
  * Email: suwatchai@outlook.com
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
@@ -14,7 +17,11 @@
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#else
+// RP2040 (Raspberry Pi Pico W)
+#include <WiFi.h>
 #endif
+
 #include <ESP_SSLClient.h>
 
 #define WIFI_SSID "WIFI_AP"
@@ -50,7 +57,11 @@ void setup()
 
     // assign the basic client
     ssl_client.setClient(&basic_client);
+}
 
+void loop()
+{
+    Serial.println("---------------------------------");
     Serial.print("Connecting to server...");
 
     String payload = "{\"title\":\"hello\"}";
@@ -83,9 +94,8 @@ void setup()
         Serial.println(" failed\n");
 
     ssl_client.stop();
-}
 
-void loop()
-{
-    // put your main code here, to run repeatedly:
+    Serial.println();
+
+    delay(5000);
 }

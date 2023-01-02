@@ -1,12 +1,12 @@
 # ESP SSLClient
 
-The upgradable SSL Client for ESP8266 and ESP32 that supports many network interfaces e.g., WiFiClient, EthernetClient, GSMClient.
+The upgradable SSL Client for ESP8266, ESP32 and and Raspberry Pi (Arduino RP2040) that supports external network interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
 
 This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
 
-This library is reliable and stable SSL Client for ESP32 and ESP8266 that is suitable for large data transmission via any slow speed SPI Arduino Network Interface device.
-
 The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
+
+The RP2040 boards can be used by installing Arduino-Pico SDK from Earle F. Philhower https://github.com/earlephilhower/arduino-pico
 
 ## Basic Usage
 ```cpp
@@ -15,6 +15,9 @@ The Arduino Client library buffer size should be large enough (1k or more) for t
   #include <WiFi.h>
   #elif defined(ESP8266)
   #include <ESP8266WiFi.h>
+  #else
+  // RP2040 (Raspberry Pi Pico W)
+  #include <WiFi.h>
   #endif
   #include <ESP_SSLClient.h>
 
@@ -61,6 +64,23 @@ The Arduino Client library buffer size should be large enough (1k or more) for t
   ssl_client.stop();
 
 ```
+
+## RP2040 Arduino SDK installation
+
+For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by searching pico and choose Raspberry Pi Pico/RP2040 to install.
+
+For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
+
+```ini
+[env:rpipicow]
+platform = https://github.com/maxgerhardt/platform-raspberrypi.git
+board = rpipicow
+framework = arduino
+board_build.core = earlephilhower
+monitor_speed = 115200
+```
+
+See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
 ## Known Issues
 

@@ -1,5 +1,8 @@
 /**
  * This example shows how to connect to MQTT server via secure port using the SSL client.
+ * 
+ * This example works on the Arduino-Pico SDK from Earle F. Philhower.
+ * https://github.com/earlephilhower/arduino-pico
  *
  * Email: suwatchai@outlook.com
  *
@@ -13,7 +16,11 @@
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#else
+// RP2040 (Raspberry Pi Pico W)
+#include <WiFi.h>
 #endif
+
 #include <ESP_SSLClient.h>
 
 // https://github.com/arduino-libraries/ArduinoMqttClient
