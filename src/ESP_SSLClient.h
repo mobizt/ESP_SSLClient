@@ -1,8 +1,8 @@
 /**
  *
- * The ESP SSL Client Class, ESP_SSLClient.h v1.1.0
+ * The ESP SSL Client Class, ESP_SSLClient.h v1.1.1
  *
- * Created January 2, 2023
+ * Created January 3, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -34,7 +34,7 @@
 #if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
 #include "esp32/MB_ESP32_TCPClient.h"
 #define MB_ESP_TCP_CLIENT MB_ESP32_TCPClient
-#elif defined(ESP8266) || defined(USE_BSSL_SSL_ENGINE)
+#elif defined(USE_BSSL_SSL_ENGINE)
 #include "esp8266/BSSL_SSLClient.h"
 #define MB_ESP_TCP_CLIENT BSSL_SSLClient
 #endif

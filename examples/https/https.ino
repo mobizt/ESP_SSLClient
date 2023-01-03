@@ -13,13 +13,10 @@
  */
 
 #include <Arduino.h>
-#if defined(ESP32)
+#if defined(ESP32) || defined(PICO_RP2040)
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
-#else
-// RP2040 (Raspberry Pi Pico W)
-#include <WiFi.h>
 #endif
 
 #include <ESP_SSLClient.h>

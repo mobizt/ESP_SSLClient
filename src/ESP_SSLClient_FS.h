@@ -3,6 +3,9 @@
 #if defined(ARDUINO)
 #include <Arduino.h>
 #endif
+#if defined(ESP8266) || defined(PICO_RP2040)
+#define USE_BSSL_SSL_ENGINE
+#endif
 
 #pragma once
 
@@ -14,9 +17,5 @@
 
 // for any MCU that runs on the ARM mbedTLS port library
 // #define USE_MBEDTLS_SSL_ENGINE
-
-#if !defined(ESP32) || defined(ESP8266)
-#define USE_BSSL_SSL_ENGINE
-#endif
 
 #endif

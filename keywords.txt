@@ -50,6 +50,7 @@ setCertStore    KEYWORD2
 setCiphers  KEYWORD2
 setCiphersLessSecure    KEYWORD2
 setSSLVersion   KEYWORD2
+probeMaxFragmentLength  KEYWORD2
 hasPeekBufferAPI    KEYWORD2
 peekAvailable   KEYWORD2
 peekBuffer  KEYWORD2
