@@ -45,9 +45,12 @@ The RP2040 boards can be used by installing Arduino-Pico SDK from Earle F. Philh
 
     Serial.print("Read response...");
 
-    while (!ssl_client.available())
+    unsigned long ms = millis();
+    while (!ssl_client.available() && millis() - ms < 3000)
     {
+      delay(0);
     }
+    
     Serial.println();
     while (ssl_client.available())
     {
