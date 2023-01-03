@@ -1,6 +1,6 @@
 # ESP SSLClient
 
-The upgradable SSL Client for ESP8266, ESP32 and and Raspberry Pi (Arduino RP2040) that supports external network interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
+The upgradable SSL Client for ESP8266, ESP32 and and Raspberry Pi (Arduino Pico RP2040) that supports external network interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
 
 This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
 
