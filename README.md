@@ -71,13 +71,6 @@ For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by se
 
 For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
 
-## Raspberry Pi Pico Reliability Concerns
-
-The Raspbery Pi Pico is really cheap board which is not 100% working due to defective board, flash chip and wiring as you can see some hardware issues from internet search. 
-
-There are some devices hang included me when writing data to filesystem (LittleFS) while reading data from filesystem is ok.
-
-
 ```ini
 [env:rpipicow]
 platform = https://github.com/maxgerhardt/platform-raspberrypi.git
@@ -89,7 +82,14 @@ monitor_speed = 115200
 
 See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
-## Known Issues
+## Raspberry Pi Pico Reliability Concerns
+
+The Raspbery Pi Pico is really cheap board which is not 100% working due to defective board, flash chip and wiring as you can see some hardware issues from internet search. 
+
+There are some devices hang included me when writing data to filesystem (LittleFS) while reading data from filesystem is ok.
+
+
+## ESP32 Known Issues
 
 Due to unexpected behavior in ESP32 Arduino Client class when using in HTTP request that some data at the end of transaction can be lost especially large response payload case. It may happen after server close the connection after "Connection: Close" header was sent. This issue happens in ESP32 Arduino Core SDK v2.0.x.
 
