@@ -71,6 +71,13 @@ For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by se
 
 For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
 
+## Raspberry Pi Pico Reliability Concerns
+
+The Raspbery Pi Pico is really cheap board which is not 100% working due to defective board, flash chip and wiring as you can see some hardware issues from internet search. 
+
+There are some devices hang included me when writing data to filesystem (LittleFS) while reading data from filesystem is ok.
+
+
 ```ini
 [env:rpipicow]
 platform = https://github.com/maxgerhardt/platform-raspberrypi.git
