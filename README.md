@@ -102,7 +102,7 @@ You can avoid this issue by keeping the connection open by sending "Connection: 
 
 The ESP_SSLClient available functions are similare to the WiFiClientSecure.h class in ESP32 and ESP8266.
 
-The PrivateKey, X509List and CertStoreBase classes for ESP8266 will be renamed to BearSSL_PrivateKey, BearSSL_X509List and BearSSL_CertStoreBase respectively.
+The Sessions and ServerSessions for ESP8266 BearSSL will be renamed to BearSSL_Sessions and BearSSL_ServerSessions respectively.
 
 For ESP32, the certificate bundle is not currenty supported.
 
