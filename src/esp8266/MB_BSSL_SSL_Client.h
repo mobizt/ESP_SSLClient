@@ -406,7 +406,7 @@ namespace BearSSL
         PrivateKey *_esp32_sk = nullptr;
 
         String host;
-        Client *base_client;
+        Client *base_client = nullptr;
         bool secured = false;
         unsigned long _timeout = 15000;
 

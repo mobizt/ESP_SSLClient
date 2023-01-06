@@ -6,7 +6,7 @@ This library is able to use in SMTP and IMAP applications and library with START
 
 The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
 
-The RP2040 boards can be used by installing Arduino-Pico SDK from Earle F. Philhower https://github.com/earlephilhower/arduino-pico
+The RP2040 boards required Arduino-Pico SDK from Earle F. Philhower https://github.com/earlephilhower/arduino-pico
 
 ## Basic Usage
 ```cpp
@@ -82,11 +82,9 @@ monitor_speed = 115200
 
 See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
-## Raspberry Pi Pico Reliability Concerns
+## Raspberry Pi Pico Known Issues
 
-The Raspbery Pi Pico is really cheap board which is not 100% working due to defective board, flash chip and wiring as you can see some hardware issues from internet search. 
-
-There are some devices hang included me when writing data to filesystem (LittleFS) while reading data from filesystem is ok.
+Including `FreeRTOS.h` and `LittleFS.h` in the same sketch, Pico device will hang when format or writing data to flash filesystem.
 
 
 ## ESP32 Known Issues
