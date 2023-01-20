@@ -64,7 +64,6 @@
 #include "lwip/inet.h"
 #include "lwip/netif.h"
 
-
 // #include "c_types.h"
 // #include <mmu_iram.h>
 // #include <umm_malloc/umm_malloc.h>
@@ -735,7 +734,11 @@ namespace BearSSL
                         rlen = base_client->read(buf + read, toRead);
                         read += rlen;
                         toRead = len - read;
+#if defined(ARDUINO_ESP8266_MAJOR) && defined(ARDUINO_ESP8266_MINOR) && defined(ARDUINO_ESP8266_REVISION) && ((ARDUINO_ESP8266_MAJOR == 3 && ARDUINO_ESP8266_MINOR >= 1) || ARDUINO_ESP8266_MAJOR > 3)
+                        esp_yield();
+#else
                         delay(0);
+#endif
 #if defined(ESP8266)
                         if (loopTimeout)
                         {

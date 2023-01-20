@@ -69,6 +69,11 @@
 #if defined(ESP8266_CORE_SDK_V3_X_X)
 #include <umm_malloc/umm_heap_select.h>
 #endif
+
+#if __has_include(<core_esp8266_version.h>)
+#include <core_esp8266_version.h>
+#endif
+
 #endif
 
 namespace BearSSL
