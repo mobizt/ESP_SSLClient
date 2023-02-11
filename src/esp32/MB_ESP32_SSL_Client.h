@@ -1,7 +1,7 @@
 /*
- * ESP32 SSL Client v2.0.4
+ * ESP32 SSL Client v2.0.5
  *
- * Created December 19, 2022
+ * Created January 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -204,18 +204,6 @@ private:
      * @return The compare result. Return true if they match
      */
     bool matchName(const std::string &name, const std::string &domainName);
-
-#if defined(ENABLE_CUSTOM_CLIENT)
-    /**
-     * Set the connection request callback.
-     * @param connectCB The callback function that accepts the host name (const char*) and port (int) as parameters.
-     */
-    void connectionRequestCallback(_ConnectionRequestCallback connectCB)
-    {
-        this->connection_cb = connectCB;
-    }
-
-#endif
 };
 
 #endif // ESP32

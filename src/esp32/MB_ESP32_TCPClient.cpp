@@ -1,7 +1,7 @@
 /*
- * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.cpp v1.0.3
+ * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.cpp v1.0.4
  *
- * Created December 18, 2022
+ * Created January 21, 2024
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)

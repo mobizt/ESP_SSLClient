@@ -1,7 +1,7 @@
 /*
- * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.h v1.0.3
+ * The Mobizt ESP32 TCP Client Class, MB_ESP32_TCPClient.h v1.0.4
  *
- * Created December 18, 2022
+ * Created January 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2022 K. Suwatchai (Mobizt)
@@ -56,7 +56,6 @@
 #include "MB_ESP32_SSL_Client.h"
 
 #include <string>
-
 
 #define WCS_CLASS MB_ESP32_SSL_Client
 #define WC_CLASS MB_ESP32_SSL_Client
@@ -332,6 +331,14 @@ public:
      * @return operating result.
      */
     bool connectSSL();
+    
+    /**
+     * Upgrade the current connection by setting up the SSL and perform the SSL handshake.
+     * @param host The host to connect (unused).
+     * @param port The port to connect (unused).
+     * @return operating result.
+     */
+    bool connectSSL(const String host, uint16_t port){ return connectSSL();}
 
     operator bool()
     {
@@ -350,7 +357,7 @@ public:
     }
 
     bool operator==(const MB_ESP32_TCPClient &);
-    
+
     bool operator!=(const MB_ESP32_TCPClient &rhs)
     {
         return !this->operator==(rhs);

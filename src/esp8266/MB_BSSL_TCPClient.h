@@ -1,10 +1,10 @@
 /**
  *
- * The TCP Client Class that supports external network interfaces for ESP8266 and Raspberry Pi v1.0.1
- * 
+ * The TCP Client Class that supports external network interfaces for ESP8266 and Raspberry Pi v1.0.2
+ *
  * This work is based on Arduino-Pico https://github.com/earlephilhower/arduino-pico by Earle F. Philhower.
  *
- * Created January 3, 2023
+ * Created January 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -207,6 +207,14 @@ public:
    * @return operating result.
    */
   bool connectSSL();
+
+  /**
+   * Upgrade the current connection by setting up the SSL and perform the SSL handshake.
+   * @param host The host to connect (unused).
+   * @param port The port to connect (unused).
+   * @return operating result.
+   */
+  bool connectSSL(const String host, uint16_t port) { return connectSSL(); }
 
   /**
    * Close the connection

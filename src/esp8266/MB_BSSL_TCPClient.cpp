@@ -1,10 +1,10 @@
 /**
  *
- * The TCP Client Class that supports external network interfaces for ESP8266 and Raspberry Pi v1.0.1
+ * The TCP Client Class that supports external network interfaces for ESP8266 and Raspberry Pi v1.0.2
  * 
  * This work is based on Arduino-Pico https://github.com/earlephilhower/arduino-pico by Earle F. Philhower.
  *
- * Created January 3, 2023
+ * Created January 21, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
