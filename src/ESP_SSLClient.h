@@ -1,6 +1,6 @@
 /**
  *
- * The ESP SSL Client Class, ESP_SSLClient.h v1.1.3
+ * The ESP SSL Client Class, ESP_SSLClient.h v1.1.4
  *
  * Created January 21, 2023
  *
@@ -30,6 +30,10 @@
 #define ESP_SSLCLIENT_H
 
 #include "ESP_SSLClient_FS.h"
+
+#ifndef SSLCLIENT_CONNECTION_UPGRADABLE
+#define SSLCLIENT_CONNECTION_UPGRADABLE
+#endif
 
 #if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
 #include "esp32/MB_ESP32_TCPClient.h"
