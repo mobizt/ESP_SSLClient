@@ -55,6 +55,7 @@ hasPeekBufferAPI    KEYWORD2
 peekAvailable   KEYWORD2
 peekBuffer  KEYWORD2
 peekConsume KEYWORD2
+setDebugLevel   KEYWORD2
 
 ####################################
 # Struct (KEYWORD3)

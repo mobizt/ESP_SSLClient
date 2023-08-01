@@ -63,6 +63,17 @@ void setup()
   // ignore server ssl certificate verification
   ssl_client.setInsecure();
 
+  ssl_client.setBufferSizes(1024, 512);
+
+  /** Call setDebugLevel(level) to set the debug
+   * esp_ssl_debug_none = 0
+   * esp_ssl_debug_error = 1
+   * esp_ssl_debug_warn = 2
+   * esp_ssl_debug_info = 3
+   * esp_ssl_debug_dump = 4
+   */
+  ssl_client.setDebugLevel(1);
+
   // assign the basic client
   ssl_client.setClient(&basic_client, false /* set enable SSL option to false */);
 }

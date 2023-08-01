@@ -35,18 +35,10 @@
 #define SSLCLIENT_CONNECTION_UPGRADABLE
 #endif
 
-#if defined(ESP32) || defined(USE_MBEDTLS_SSL_ENGINE)
-#include "esp32/MB_ESP32_TCPClient.h"
-#define MB_ESP_TCP_CLIENT MB_ESP32_TCPClient
-#elif defined(USE_BSSL_SSL_ENGINE)
-#include "esp8266/BSSL_SSLClient.h"
-#define MB_ESP_TCP_CLIENT BSSL_SSLClient
-#endif
+#include "client/BSSL_TCP_Client.h"
 
-class ESP_SSLClient : public MB_ESP_TCP_CLIENT
-{
-private:
-    
+class ESP_SSLClient : public BSSL_TCP_Client
+{ 
 public:
     ESP_SSLClient(){};
     ~ESP_SSLClient(){};

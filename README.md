@@ -23,6 +23,15 @@ The RP2040 boards required Arduino-Pico SDK from Earle F. Philhower https://gith
   
   // ignore server ssl certificate verification
   ssl_client.setInsecure();
+
+  /** Call setDebugLevel(level) to set the debug
+  * esp_ssl_debug_none = 0
+  * esp_ssl_debug_error = 1
+  * esp_ssl_debug_warn = 2
+  * esp_ssl_debug_info = 3
+  * esp_ssl_debug_dump = 4
+  */
+  ssl_client.setDebugLevel(1);
   
   // assign the basic client
   ssl_client.setClient(&basic_client);
@@ -82,23 +91,11 @@ monitor_speed = 115200
 
 See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
-## Raspberry Pi Pico Known Issues
-
-Including `FreeRTOS.h` and `LittleFS.h` in the same sketch, Pico device will hang when format or writing data to flash filesystem.
-
-
-## ESP32 Known Issues
-
-Due to unexpected behavior in ESP32 Arduino Client class when using in HTTP request that some data at the end of transaction can be lost especially large response payload case. It may happen after server close the connection after "Connection: Close" header was sent. This issue happens in ESP32 Arduino Core SDK v2.0.x.
-
-This issue may not exist in case small response payload unless large response payload case that the Arduino Client closed before the payload reading to be completed.
-
-You can avoid this issue by keeping the connection open by sending "Connection: Keep-Alive" header in HTTP request or with content type header "text/event-stream" in SSE API.
 
 
 ## Functions Interfaces
 
-The ESP_SSLClient available functions are similare to the WiFiClientSecure.h class in ESP32 and ESP8266.
+The ESP_SSLClient available functions are similare to the WiFiClientSecure.h class in ESP8266.
 
 The Sessions and ServerSessions for ESP8266 BearSSL will be renamed to BearSSL_Sessions and BearSSL_ServerSessions respectively.
 
