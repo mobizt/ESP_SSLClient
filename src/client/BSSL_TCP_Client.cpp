@@ -52,9 +52,9 @@
 #define BSSL_TCP_Client_CPP
 
 #include "BSSL_TCP_Client.h"
-#include <lwip/sockets.h>
-#include <lwip/netdb.h>
-#include <errno.h>
+//#include <lwip/sockets.h>
+//#include <lwip/netdb.h>
+//#include <errno.h>
 
 #undef connect
 #undef write
@@ -344,10 +344,12 @@ int BSSL_TCP_Client::getLastSSLError(char *dest, size_t len)
     return _ssl_client.getLastSSLError(dest, len);
 }
 
+#if defined(ESP_SSL_FS_SUPPORTED)
 void BSSL_TCP_Client::setCertStore(CertStoreBase *certStore)
 {
     _ssl_client.setCertStore(certStore);
 }
+#endif
 
 bool BSSL_TCP_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
 {

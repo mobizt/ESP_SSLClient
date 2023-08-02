@@ -4,7 +4,26 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#if defined __has_include
+#if __has_include(<pgmspace.h>) 
 #include <pgmspace.h>
+#endif
+#endif
+
+#if !defined(PROGMEM)
+#define PROGMEM
+#define PGM_READ_BYTE *
+#define MEMCMP_P memcmp
+#define MEMCPY_P memcpy
+#else
+#define PROGMEM_SUPPORTED
+#define PGM_READ_BYTE pgm_read_byte
+#define MEMCMP_P memcmp_P
+#define MEMCPY_P memcpy_P
+#endif
+
+
+
 #include "bssl/inner.h"
 
 
@@ -23,7 +42,7 @@ t0_parse7E_unsigned(const unsigned char **p)
 	for (;;) {
 		unsigned y;
 
-		y = pgm_read_byte((*p)++);
+		y = PGM_READ_BYTE((*p)++);
 		x = (x << 7) | (uint32_t)(y & 0x7F);
 		if (y < 0x80) {
 			return x;
@@ -37,12 +56,12 @@ t0_parse7E_signed(const unsigned char **p)
 	int neg;
 	uint32_t x;
 
-	neg = (pgm_read_byte(*p) >> 6) & 1;
+	neg = (PGM_READ_BYTE(*p) >> 6) & 1;
 	x = (uint32_t)-neg;
 	for (;;) {
 		unsigned y;
 
-		y = pgm_read_byte((*p)++);
+		y = PGM_READ_BYTE((*p)++);
 		x = (x << 7) | (uint32_t)(y & 0x7F);
 		if (y < 0x80) {
 			if (neg) {
@@ -247,6 +266,7 @@ static const uint16_t t0_caddr[] PROGMEM = {
 
 #define T0_INTERPRETED   31
 
+#if defined(PROGMEM_SUPPORTED)
 #define T0_ENTER(ip, rp, slot)   do { \
 		const unsigned char *t0_newip; \
 		uint32_t t0_lnum; \
@@ -256,6 +276,19 @@ static const uint16_t t0_caddr[] PROGMEM = {
 		*((rp) ++) = (uint32_t)((ip) - &t0_codeblock[0]) + (t0_lnum << 16); \
 		(ip) = t0_newip; \
 	} while (0)
+#else
+#define T0_ENTER(ip, rp, slot)   do { \
+		const unsigned char *t0_newip; \
+		uint32_t t0_lnum; \
+		t0_newip = &t0_codeblock[t0_caddr[(slot) - T0_INTERPRETED]]; \
+		t0_lnum = t0_parse7E_unsigned(&t0_newip); \
+		(rp) += t0_lnum; \
+		*((rp) ++) = (uint32_t)((ip) - &t0_codeblock[0]) + (t0_lnum << 16); \
+		(ip) = t0_newip; \
+	} while (0)
+#endif
+
+
 
 #define T0_DEFENTRY(name, slot) \
 void \
@@ -268,7 +301,7 @@ name(void *ctx) \
 
 T0_DEFENTRY(br_pkey_decoder_init_main, 68)
 
-#define T0_NEXT(t0ipp)   (pgm_read_byte((*t0ipp)++))
+#define T0_NEXT(t0ipp)   (PGM_READ_BYTE((*t0ipp)++))
 
 void
 br_pkey_decoder_run(void *t0ctx)
@@ -475,8 +508,8 @@ br_pkey_decoder_run(void *t0ctx)
 	const unsigned char *a1 = &CTX->pad[0];
 	size_t len = a1[0];
 	int x;
-	if (len == pgm_read_byte(&a2[0])) {
-		x = -(memcmp_P(a1 + 1, a2 + 1, len) == 0);
+	if (len == PGM_READ_BYTE(&a2[0])) {
+		x = -(MEMCMP_P(a1 + 1, a2 + 1, len) == 0);
 	} else {
 		x = 0;
 	}
@@ -515,7 +548,7 @@ br_pkey_decoder_run(void *t0ctx)
 		clen = (size_t)len;
 	}
 	if (addr != 0) {
-		memcpy_P((unsigned char *)CTX + addr, CTX->hbuf, clen);
+		MEMCPY_P((unsigned char *)CTX + addr, CTX->hbuf, clen);
 	}
 	CTX->hbuf += clen;
 	CTX->hlen -= clen;
@@ -531,7 +564,7 @@ br_pkey_decoder_run(void *t0ctx)
 		T0_PUSHi(-1);
 	} else {
 		CTX->hlen --;
-		T0_PUSH(pgm_read_byte(CTX->hbuf ++));
+		T0_PUSH(PGM_READ_BYTE(CTX->hbuf ++));
 	}
 
 				}

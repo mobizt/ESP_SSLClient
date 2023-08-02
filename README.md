@@ -1,12 +1,58 @@
 # ESP SSLClient
 
-The upgradable SSL Client for ESP8266, ESP32 and and Raspberry Pi (Arduino Pico RP2040) that supports external network interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
+The upgradable SSL Client for ESP8266, ESP32, Raspberry Pi (Arduino Pico RP2040) and all Arduino devices that supports external networking interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
 
-This library is able to use in SMTP and IMAP applications and library with STARTTLS command.
+This library provided the Secure Layer Networking (SSL/TLS) TCP Client.
 
 The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
 
 The RP2040 boards required Arduino-Pico SDK from Earle F. Philhower https://github.com/earlephilhower/arduino-pico
+
+This library used light weight SSL engine library BearSSL for secure data encryption and decryption.
+
+In ESP8266 device, the native BearSSL in Core SDK will be used and built-in BearSSL library will be used for other Arduino devices.
+
+This library is fully compatible and able to work with [ESP-Mail-Client](https://github.com/mobizt/ESP-Mail-Client) library seamlessly.
+
+
+### Supposted Arduino Devices with flash size > 128k.
+
+ * ESP32
+ * ESP8266
+ * Arduino SAMD
+ * Arduino STM32
+ * Arduino AVR
+ * Teensy 3.1 to 4.1
+ * Arduino Nano RP2040 Connect
+ * Raspberry Pi Pico
+ 
+ ### Supposted Networking Devices with Client (with driver) library.
+
+ * WIZnet Wxxx series modules
+ * All SPI Ethernet modules
+ * All GSM modules
+ * All WiFi modules
+
+ 
+## Features
+
+* **Using BearSSL SSL engine for all devices (V2.0.0).**
+
+* **Supports all Arduino devices with enough program flash space (128k or more).**
+
+* **First and only one SSL Client library that support SSL/TLS connection upgrades.**
+
+* **Support STARTTLS in Email application.**
+
+* **Use Client pointer without copy to constructor then it can be changed seemlessly at run time.**
+
+* **The receive and transmit buffer memory can be reserved as supported by BearSSL.**
+
+* **Easy to use as it provides the same interface functions as in ESP8266's WiFiClientSecure.**
+
+* **Supports the authentications as in WiFiClientSecure.**
+
+
 
 ## Basic Usage
 ```cpp
@@ -32,6 +78,11 @@ The RP2040 boards required Arduino-Pico SDK from Earle F. Philhower https://gith
   * esp_ssl_debug_dump = 4
   */
   ssl_client.setDebugLevel(1);
+
+  // Set the receive and transmit buffers size in bytes for memory allocation (512 to 16384).
+  // For server that does not support SSL fragment size negotiation, leave this setting the default value
+  // by not set any buffer size or set the rx buffer size to maximum SSL record size (16384) and 512 for tx buffer size.  
+  ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
   
   // assign the basic client
   ssl_client.setClient(&basic_client);

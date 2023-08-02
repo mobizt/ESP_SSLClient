@@ -24,7 +24,16 @@
 #ifndef BSSL_CERTSTORE_H
 #define BSSL_CERTSTORE_H
 
+#if defined __has_include
+#if __has_include(<FS.h>) && defined(ESP_SSLCLIENT_USE_FILESYSTEM)
 #include <FS.h>
+#define ESP_SSL_FS_SUPPORTED
+#endif
+#endif
+
+#if defined(ESP_SSL_FS_SUPPORTED)
+
+
 #include "bssl/bearssl.h"
 #include "BSSL_Helper.h"
 
@@ -34,29 +43,32 @@ using namespace bssl;
 // of a large set of certificates stored on FS or SD card to
 // be dynamically used when validating a X509 certificate
 
-namespace bssl {
+namespace bssl
+{
 
-class CertStoreBase {
+  class CertStoreBase
+  {
   public:
     virtual ~CertStoreBase() {}
 
     // Installs the cert store into the X509 decoder (normally via static function callbacks)
     virtual void installCertStore(br_x509_minimal_context *ctx) = 0;
-};
+  };
 
-class CertStore: public CertStoreBase {
+  class CertStore : public CertStoreBase
+  {
   public:
-    CertStore() { };
+    CertStore(){};
     ~CertStore();
 
     // Set the file interface instances, do preprocessing
-    int initCertStore(fs::FS &fs, const char *indexFileName, const char *dataFileName);
+    int initCertStore(FS &fs, const char *indexFileName, const char *dataFileName);
 
     // Installs the cert store into the X509 decoder (normally via static function callbacks)
     void installCertStore(br_x509_minimal_context *ctx);
 
   protected:
-    fs::FS *_fs = nullptr;
+    FS *_fs = nullptr;
     char *_indexName = nullptr;
     char *_dataName = nullptr;
     X509List *_x509 = nullptr;
@@ -66,17 +78,19 @@ class CertStore: public CertStoreBase {
     static void freeHashedTA(void *ctx, const br_x509_trust_anchor *ta);
 
     // The binary format of the index file
-    class CertInfo {
+    class CertInfo
+    {
     public:
       uint8_t sha256[32];
       uint32_t offset;
       uint32_t length;
     };
     static CertInfo _preprocessCert(uint32_t length, uint32_t offset, const void *raw);
+  };
 
 };
 
-};
+#endif
 
 #endif
 

@@ -75,7 +75,9 @@ BSSL_SSL_Client::BSSL_SSL_Client(Client *client)
     setClient(client);
     mClear();
     mClearAuthenticationSettings();
+#if defined(ESP_SSL_FS_SUPPORTED)
     _certStore = nullptr; // Don't want to remove cert store on a clear, should be long lived
+#endif
     _sk = nullptr;
 #if defined(USE_EMBED_SSL_ENGINE)
     stack_thunk_add_ref();
@@ -319,7 +321,7 @@ size_t BSSL_SSL_Client::write(uint8_t b)
 size_t BSSL_SSL_Client::write_P(PGM_P buf, size_t size)
 {
     char dest[size];
-    memcpy_P((void *)dest, (PGM_VOID_P)buf, size);
+    memcpy_P((void *)dest, buf, size);
     return write((const uint8_t *)dest, size);
 }
 
@@ -860,10 +862,12 @@ int BSSL_SSL_Client::getLastSSLError(char *dest, size_t len)
 }
 
 // Attach a preconfigured certificate store
+#if defined(ESP_SSL_FS_SUPPORTED)
 void BSSL_SSL_Client::setCertStore(CertStoreBase *certStore)
 {
     _certStore = certStore;
 }
+#endif
 
 // Set custom list of ciphers
 bool BSSL_SSL_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
@@ -1395,7 +1399,12 @@ int BSSL_SSL_Client::mConnectSSL(const char *host)
 
 #if defined(ESP_SSLCLIENT_ENABLE_DEBUG)
     // BearSSL will reject all connections unless an authentication option is set, warn in DEBUG builds
-    if (!_use_insecure && !_use_fingerprint && !_use_self_signed && !_knownkey && !_certStore && !_ta)
+#if defined(ESP_SSL_FS_SUPPORTED)
+#define CRTSTORECOND &&!_certStore
+#else
+#define CRTSTORECOND
+#endif
+    if (!_use_insecure && !_use_fingerprint && !_use_self_signed && !_knownkey CRTSTORECOND && !_ta)
     {
         esp_ssl_debug_print(PSTR("Connection *will* fail, no authentication method is setup."), _debug_level, esp_ssl_debug_warn, __func__);
     }
@@ -2010,10 +2019,12 @@ bool BSSL_SSL_Client::mInstallClientX509Validator()
             // Magic constants convert to x509 times
             br_x509_minimal_set_time(_x509_minimal.get(), ((uint32_t)_now) / 86400 + 719528, ((uint32_t)_now) % 86400);
         }
+#if defined(ESP_SSL_FS_SUPPORTED)
         if (_certStore)
         {
             _certStore->installCertStore(_x509_minimal.get());
         }
+#endif
         br_ssl_engine_set_x509(_eng, &_x509_minimal->vtable);
     }
     return true;

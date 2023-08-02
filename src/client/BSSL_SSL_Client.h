@@ -41,7 +41,17 @@
 #include "ESP_SSLClient_Const.h"
 
 #include <vector>
+#include <memory>
+#if defined __has_include
+#if __has_include(<pgmspace.h>) 
+#include <pgmspace.h>
+#endif
+#endif
 
+
+#if !defined(FPSTR)
+#define FPSTR
+#endif
 #if defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
 
 #include "BSSL_Helper.h"
@@ -148,9 +158,9 @@ public:
     int getMFLNStatus();
 
     int getLastSSLError(char *dest, size_t len);
-
+#if defined(ESP_SSL_FS_SUPPORTED)
     void setCertStore(CertStoreBase *certStore);
-
+#endif
     bool setCiphers(const uint16_t *cipherAry, int cipherCount);
 
     bool setCiphers(const std::vector<uint16_t> &list);
@@ -275,8 +285,9 @@ private:
 
     time_t _now = 0;
     const X509List *_ta = nullptr;
+#if defined(ESP_SSL_FS_SUPPORTED)
     CertStoreBase *_certStore = 0;
-
+#endif
     // Optional client certificate
     const X509List *_chain = nullptr;
     const PrivateKey *_sk = nullptr;

@@ -81,7 +81,8 @@ void setup()
   // ignore server ssl certificate verification
   ssl_client.setInsecure();
 
-  ssl_client.setBufferSizes(1024, 512);
+  // Set the receive and transmit buffers size in bytes for memory allocation (512 to 16384).
+  ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
 
   /** Call setDebugLevel(level) to set the debug
    * esp_ssl_debug_none = 0

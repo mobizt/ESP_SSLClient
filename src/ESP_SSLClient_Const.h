@@ -14,9 +14,9 @@
 #if !defined(ESP_SSLCLIENT_DEBUG_PORT)
 #define ESP_SSLCLIENT_DEBUG_PORT Serial
 #endif
-#define ESP_SSLCLIENT_DEBUG_PRINTF ESP_SSLCLIENT_DEBUG_PORT.printf
+#define ESP_SSLCLIENT_DEBUG_PRINT ESP_SSLCLIENT_DEBUG_PORT.print
 #else
-#define ESP_SSLCLIENT_DEBUG_PRINTF(...)
+#define ESP_SSLCLIENT_DEBUG_PRINT(...)
 #endif
 
 enum esp_ssl_client_debug_level
@@ -42,36 +42,36 @@ enum esp_ssl_client_error_types
 
 static void esp_ssl_debug_print_prefix(const char *func_name, int level)
 {
-    ESP_SSLCLIENT_DEBUG_PRINTF(PSTR("> "));
+    ESP_SSLCLIENT_DEBUG_PRINT(PSTR("> "));
     // print the debug level
     switch (level)
     {
     case esp_ssl_debug_info:
-        ESP_SSLCLIENT_DEBUG_PRINTF(PSTR("INFO."));
+        ESP_SSLCLIENT_DEBUG_PRINT(PSTR("INFO."));
         break;
     case esp_ssl_debug_warn:
-        ESP_SSLCLIENT_DEBUG_PRINTF(PSTR("WARN."));
+        ESP_SSLCLIENT_DEBUG_PRINT(PSTR("WARN."));
         break;
     case esp_ssl_debug_error:
-        ESP_SSLCLIENT_DEBUG_PRINTF(PSTR("ERROR."));
+        ESP_SSLCLIENT_DEBUG_PRINT(PSTR("ERROR."));
         break;
     default:
         break;
     }
 
     // print the function name
-    ESP_SSLCLIENT_DEBUG_PRINTF(PSTR(""));
-    ESP_SSLCLIENT_DEBUG_PRINTF(func_name);
-    ESP_SSLCLIENT_DEBUG_PRINTF(PSTR(": "));
+    ESP_SSLCLIENT_DEBUG_PRINT(PSTR(""));
+    ESP_SSLCLIENT_DEBUG_PRINT(func_name);
+    ESP_SSLCLIENT_DEBUG_PRINT(PSTR(": "));
 }
 
-static void esp_ssl_debug_print(PGM_P msg, int debug_level, int level, const char *func_name)
+__attribute__((unused)) static void esp_ssl_debug_print(PGM_P msg, int debug_level, int level, const char *func_name)
 {
     if (debug_level >= level)
     {
         esp_ssl_debug_print_prefix(func_name, level);
-        ESP_SSLCLIENT_DEBUG_PRINTF(msg);
-        ESP_SSLCLIENT_DEBUG_PRINTF("\r\n");
+        ESP_SSLCLIENT_DEBUG_PRINT(msg);
+        ESP_SSLCLIENT_DEBUG_PRINT("\r\n");
     }
 }
 

@@ -331,9 +331,9 @@ public:
     int getMFLNStatus();
 
     int getLastSSLError(char *dest = NULL, size_t len = 0);
-
+#if defined(ESP_SSL_FS_SUPPORTED)
     void setCertStore(CertStoreBase *certStore);
-
+#endif
     bool setCiphers(const uint16_t *cipherAry, int cipherCount);
 
     bool setCiphers(const std::vector<uint16_t> &list);
