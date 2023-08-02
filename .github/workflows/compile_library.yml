@@ -133,6 +133,7 @@ jobs:
         echo "board = rpipicow" >> platformio.ini
         echo "framework = arduino" >> platformio.ini
         echo "board_build.core = earlephilhower" >> platformio.ini
+        echo "board_build.filesystem_size = 1m" >> platformio.ini
 
 
     - name: Run PlatformIO
