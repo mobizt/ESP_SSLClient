@@ -1,6 +1,10 @@
 # ESP SSLClient
 
-The upgradable SSL Client for ESP8266, ESP32, Raspberry Pi (Arduino Pico RP2040) and all Arduino devices that supports external networking interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
+![Compile](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_library.yml/badge.svg) ![Examples](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_examples.yml/badge.svg)  [![Github Stars](https://img.shields.io/github/stars/mobizt/ESP_SSLClient?logo=github)](https://github.com/mobizt/ESP_SSLClient/stargazers) ![Github Issues](https://img.shields.io/github/issues/mobizt/ESP_SSLClient?logo=github)
+
+![arduino-library-badge](https://www.ardu-badge.com/badge/ESP_SSLClient.svg) ![PlatformIO](https://badges.registry.platformio.org/packages/mobizt/library/ESP_SSLClient.svg)
+
+The upgradable SSL Client for ESP8266, ESP32, Raspberry Pi Pico (RP2040) and all Arduino devices that supports external networking interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
 
 This library provided the Secure Layer Networking (SSL/TLS) TCP Client.
 

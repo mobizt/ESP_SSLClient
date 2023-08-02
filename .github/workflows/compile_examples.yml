@@ -52,7 +52,8 @@ jobs:
 
     - name: Run PlatformIO Examples
       run: |
-        pio ci --board=d1_mini 
+        pio ci --board=d1_mini \
+        --lib=arduino-libraries/ArduinoMqttClient
       env:
         PLATFORMIO_CI_SRC: ${{ matrix.example }}
 
@@ -97,6 +98,7 @@ jobs:
 
     - name: Run PlatformIO Examples
       run: |
-        pio ci --board=esp32dev
+        pio ci --board=esp32dev \
+        --lib=arduino-libraries/ArduinoMqttClient
       env:
         PLATFORMIO_CI_SRC: ${{ matrix.example }}
