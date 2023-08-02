@@ -126,6 +126,7 @@ jobs:
     - name: Create main file
       run: |
         echo "#include <Arduino.h>" >> src/main.ino
+        echo "#include <LwipEthernet.h>" >> src/main.ino
         echo "void setup() {}" >> src/main.ino
         echo "void loop() {}" >> src/main.ino
         echo "[env:rpipicow]" >> platformio.ini
