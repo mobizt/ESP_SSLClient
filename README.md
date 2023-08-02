@@ -44,7 +44,7 @@ This library is fully compatible and able to work with [ESP-Mail-Client](https:/
 
 * **Supports all Arduino devices with enough program flash space (128k or more).**
 
-* **First and only one SSL Client library that support SSL/TLS connection upgrades.**
+* **First and only one SSL Client library that supports SSL/TLS connection upgrades.**
 
 * **Support STARTTLS in Email application.**
 
