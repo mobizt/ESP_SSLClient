@@ -1,5 +1,5 @@
 /**
- * BSSL_SSL_Client library v1.0 for ESP32 and Arduino devices except for ESP8266
+ * BSSL_SSL_Client library v1.0 for Arduino devices.
  *
  * Created August 1, 2003
  *
@@ -31,12 +31,15 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
+
 #ifndef BSSL_SSL_CLIENT_CPP
 #define BSSL_SSL_CLIENT_CPP
 
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
-#if defined(ESP32) || defined(USE_LIB_SSL_ENGINE) || defined(USE_EMBED_SSL_ENGINE)
+#if defined(USE_LIB_SSL_ENGINE) || defined(USE_EMBED_SSL_ENGINE)
 
 #include "BSSL_Helper.h"
 #include "BSSL_SSL_Client.h"

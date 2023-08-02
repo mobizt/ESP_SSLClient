@@ -1,8 +1,8 @@
 /* Automatically generated code; do not modify directly. */
 
-#include <Arduino.h>
+
 #include "ESP_SSLClient_FS.h"
-#if defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#if defined(USE_LIB_SSL_ENGINE)
 
 #include <stddef.h>
 #include <stdint.h>

@@ -43,8 +43,10 @@ jobs:
         
     - name: Install library
       run: | 
-        pio lib -g install \
+        pio lib install \
         https://github.com/mobizt/ESP_SSLClient
+        pio lib install \
+        https://github.com/arduino-libraries/ArduinoMqttClient
         
     - name: update library
       run: |
@@ -52,8 +54,7 @@ jobs:
 
     - name: Run PlatformIO Examples
       run: |
-        pio ci --board=d1_mini \
-        --lib=arduino-libraries/ArduinoMqttClient
+        pio ci --board=d1_mini
       env:
         PLATFORMIO_CI_SRC: ${{ matrix.example }}
 
@@ -89,8 +90,10 @@ jobs:
 
     - name: Install library
       run: | 
-        pio lib -g install \
+        pio lib install \
         https://github.com/mobizt/ESP_SSLClient
+        pio lib install \
+        https://github.com/arduino-libraries/ArduinoMqttClient
         
     - name: update library
       run: |
@@ -98,7 +101,6 @@ jobs:
 
     - name: Run PlatformIO Examples
       run: |
-        pio ci --board=esp32dev \
-        --lib=arduino-libraries/ArduinoMqttClient
+        pio ci --board=esp32dev
       env:
         PLATFORMIO_CI_SRC: ${{ matrix.example }}

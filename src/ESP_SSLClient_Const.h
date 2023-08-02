@@ -1,5 +1,11 @@
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
+
 #ifndef ESP_SSLCLIENT_CONST_H
 #define ESP_SSLCLIENT_CONST_H
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
 
 #include "ESP_SSLClient_FS.h"
 
@@ -65,7 +71,7 @@ static void esp_ssl_debug_print_prefix(const char *func_name, int level)
     ESP_SSLCLIENT_DEBUG_PRINT(PSTR(": "));
 }
 
-__attribute__((unused)) static void esp_ssl_debug_print(PGM_P msg, int debug_level, int level, const char *func_name)
+static void esp_ssl_debug_print(PGM_P msg, int debug_level, int level, const char *func_name)
 {
     if (debug_level >= level)
     {
@@ -77,7 +83,7 @@ __attribute__((unused)) static void esp_ssl_debug_print(PGM_P msg, int debug_lev
 
 #endif
 
-__attribute__((unused)) static uint8_t htoi(unsigned char c)
+static uint8_t htoi(unsigned char c)
 {
     if (c >= '0' && c <= '9')
         return c - '0';
@@ -91,7 +97,7 @@ __attribute__((unused)) static uint8_t htoi(unsigned char c)
 
 // Helper function which aborts a TLS handshake by sending TLS
 // ClientAbort and ClientClose messages.
-__attribute__((unused)) static bool send_abort(Client *probe, bool supportsLen)
+static bool send_abort(Client *probe, bool supportsLen)
 {
     // If we're still connected, send the appropriate notice that
     // we're aborting the handshake per RFCs.

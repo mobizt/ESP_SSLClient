@@ -20,6 +20,8 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
 
 #ifndef BSSL_HELPER_H
 #define BSSL_HELPER_H
@@ -64,7 +66,7 @@
 
 #endif
 
-#elif defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#elif defined(USE_LIB_SSL_ENGINE)
 
 #include "bssl/bearssl.h"
 
@@ -269,7 +271,7 @@ namespace bssl
     {
 
         // Install hashes into the SSL engine
-        __attribute__((unused)) static void br_ssl_client_install_hashes(br_ssl_engine_context *eng)
+        static void br_ssl_client_install_hashes(br_ssl_engine_context *eng)
         {
             br_ssl_engine_set_hash(eng, br_md5_ID, &br_md5_vtable);
             br_ssl_engine_set_hash(eng, br_sha1_ID, &br_sha1_vtable);
@@ -279,7 +281,7 @@ namespace bssl
             br_ssl_engine_set_hash(eng, br_sha512_ID, &br_sha512_vtable);
         }
 
-        __attribute__((unused)) static void br_x509_minimal_install_hashes(br_x509_minimal_context *x509)
+        static void br_x509_minimal_install_hashes(br_x509_minimal_context *x509)
         {
             br_x509_minimal_set_hash(x509, br_md5_ID, &br_md5_vtable);
             br_x509_minimal_set_hash(x509, br_sha1_ID, &br_sha1_vtable);
@@ -290,7 +292,7 @@ namespace bssl
         }
 
         // Default initializion for our SSL clients
-        __attribute__((unused)) static void br_ssl_client_base_init(br_ssl_client_context *cc, const uint16_t *cipher_list, int cipher_cnt)
+        static void br_ssl_client_base_init(br_ssl_client_context *cc, const uint16_t *cipher_list, int cipher_cnt)
         {
             uint16_t suites[cipher_cnt];
             memcpy_P(suites, cipher_list, cipher_cnt * sizeof(cipher_list[0]));
@@ -335,14 +337,14 @@ namespace bssl
         };
 
         // Callback for the x509_minimal subject DN
-        __attribute__((unused)) static void insecure_subject_dn_append(void *ctx, const void *buf, size_t len)
+        static void insecure_subject_dn_append(void *ctx, const void *buf, size_t len)
         {
             br_x509_insecure_context *xc = (br_x509_insecure_context *)ctx;
             br_sha256_update(&xc->sha256_subject, buf, len);
         }
 
         // Callback for the x509_minimal issuer DN
-        __attribute__((unused)) static void insecure_issuer_dn_append(void *ctx, const void *buf, size_t len)
+        static void insecure_issuer_dn_append(void *ctx, const void *buf, size_t len)
         {
             br_x509_insecure_context *xc = (br_x509_insecure_context *)ctx;
             br_sha256_update(&xc->sha256_issuer, buf, len);
@@ -350,14 +352,14 @@ namespace bssl
 
         // Callback for each certificate present in the chain (but only operates
         // on the first one by design).
-        __attribute__((unused)) static void insecure_start_cert(const br_x509_class **ctx, uint32_t length)
+        static void insecure_start_cert(const br_x509_class **ctx, uint32_t length)
         {
             (void)ctx;
             (void)length;
         }
 
         // Callback for each byte stream in the chain.  Only process first cert.
-        __attribute__((unused)) static void insecure_append(const br_x509_class **ctx, const unsigned char *buf, size_t len)
+        static void insecure_append(const br_x509_class **ctx, const unsigned char *buf, size_t len)
         {
             br_x509_insecure_context *xc = (br_x509_insecure_context *)ctx;
             // Don't process anything but the first certificate in the chain
@@ -368,7 +370,7 @@ namespace bssl
             }
         }
         // Callback on the first byte of any certificate
-        __attribute__((unused)) static void insecure_start_chain(const br_x509_class **ctx, const char *server_name)
+        static void insecure_start_chain(const br_x509_class **ctx, const char *server_name)
         {
             br_x509_insecure_context *xc = (br_x509_insecure_context *)ctx;
 #if defined(USE_EMBED_SSL_ENGINE)
@@ -384,7 +386,7 @@ namespace bssl
         }
 
         // Callback on individual cert end.
-        __attribute__((unused)) static void insecure_end_cert(const br_x509_class **ctx)
+        static void insecure_end_cert(const br_x509_class **ctx)
         {
             br_x509_insecure_context *xc = (br_x509_insecure_context *)ctx;
             xc->done_cert = true;
@@ -392,7 +394,7 @@ namespace bssl
 
         // Callback when complete chain has been parsed.
         // Return 0 on validation success, !0 on validation error
-        __attribute__((unused)) static unsigned insecure_end_chain(const br_x509_class **ctx)
+        static unsigned insecure_end_chain(const br_x509_class **ctx)
         {
             const br_x509_insecure_context *xc = (const br_x509_insecure_context *)ctx;
             if (!xc->done_cert)
@@ -426,7 +428,7 @@ namespace bssl
         }
 
         // Return the public key from the validator (set by x509_minimal)
-        __attribute__((unused)) static const br_x509_pkey *insecure_get_pkey(const br_x509_class *const *ctx, unsigned *usages)
+        static const br_x509_pkey *insecure_get_pkey(const br_x509_class *const *ctx, unsigned *usages)
         {
             const br_x509_insecure_context *xc = (const br_x509_insecure_context *)ctx;
             if (usages != nullptr)

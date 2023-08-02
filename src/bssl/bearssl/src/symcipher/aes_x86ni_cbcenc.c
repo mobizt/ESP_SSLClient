@@ -22,9 +22,8 @@
  * SOFTWARE.
  */
 
-#include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
-#if defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#if defined(USE_LIB_SSL_ENGINE)
 
 #define BR_ENABLE_INTRINSICS   1
 #include "bssl/inner.h"

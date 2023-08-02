@@ -2,7 +2,6 @@
 #define ESP_SSLClient_FS_H
 
 #if defined(ARDUINO)
-#include <Arduino.h>
 #endif
 
 #if defined(ESP8266) || defined(PICO_RP2040)

@@ -20,9 +20,12 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
+
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
-#if defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#if defined(USE_LIB_SSL_ENGINE)
 
 #ifndef BSSL_HELPER_CPP
 #define BSSL_HELPER_CPP

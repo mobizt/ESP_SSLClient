@@ -21,9 +21,9 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#include <Arduino.h>
+
 #include "ESP_SSLClient_FS.h"
-#if defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#if defined(USE_LIB_SSL_ENGINE)
 
 #include "bssl/inner.h"
 
