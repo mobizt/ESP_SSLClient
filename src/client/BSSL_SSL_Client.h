@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.1 for Arduino devices.
  *
- * Created August 1, 2003
+ * Created August 3, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -30,6 +30,8 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef BSSL_SSL_CLIENT_H
+#define BSSL_SSL_CLIENT_H
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wvla"
@@ -37,9 +39,6 @@
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE) || defined(USE_EMBED_SSL_ENGINE)
-
-#ifndef BSSL_SSL_CLIENT_H
-#define BSSL_SSL_Client_H
 
 #include "ESP_SSLClient_Const.h"
 
@@ -331,4 +330,4 @@ private:
 
 #endif
 
-#endif /** BSSL_SSL_Client_H_ */
+#endif /** BSSL_SSL_Client_H */

@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.1 for Arduino devices.
  *
- * Created August 1, 2003
+ * Created August 3, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -31,11 +31,11 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wvla"
-
 #ifndef BSSL_SSL_CLIENT_CPP
 #define BSSL_SSL_CLIENT_CPP
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
 
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
@@ -2017,6 +2017,11 @@ bool BSSL_SSL_Client::mInstallClientX509Validator()
         br_x509_minimal_set_ecdsa(_x509_minimal.get(), br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
 #endif
         bssl::br_x509_minimal_install_hashes(_x509_minimal.get());
+
+#if (defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT) 
+        if (_now < ESP_SSLCLIENT_VALID_TIMESTAMP)
+            _now = time(nullptr);
+#endif
         if (_now)
         {
             // Magic constants convert to x509 times

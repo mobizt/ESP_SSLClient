@@ -1,7 +1,7 @@
 /**
- * BSSL_TCP_Client v2.0.1 for Arduino devices.
+ * BSSL_TCP_Client v2.0.3 for Arduino devices.
  *
- * Created August 2, 2023
+ * Created August 3, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -43,6 +43,8 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
+#ifndef BSSL_TCP_CLIENT_CPP
+#define BSSL_TCP_CLIENT_CPP
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wvla"
@@ -50,9 +52,6 @@
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE) || defined(USE_EMBED_SSL_ENGINE)
-
-#ifndef BSSL_TCP_CLIENT_CPP
-#define BSSL_TCP_Client_CPP
 
 #include "BSSL_TCP_Client.h"
 //#include <lwip/sockets.h>

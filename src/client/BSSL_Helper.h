@@ -20,11 +20,12 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wvla"
 
 #ifndef BSSL_HELPER_H
 #define BSSL_HELPER_H
+
+#pragma GCC diagnostic ignored "-Wunused-function"
+#pragma GCC diagnostic ignored "-Wvla"
 
 #include <Arduino.h>
 #include "ESP_SSLClient_FS.h"

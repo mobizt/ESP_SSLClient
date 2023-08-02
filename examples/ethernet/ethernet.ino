@@ -1,5 +1,5 @@
 /**
- * This example shows how to connect to server via https using the SSL client.
+ * This example shows how to connect to server using W5500, ESP32 and SSL Client.
  *
  * This example works on the Arduino-Pico SDK from Earle F. Philhower.
  * https://github.com/earlephilhower/arduino-pico
@@ -13,57 +13,67 @@
  */
 
 #include <Arduino.h>
-#if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
-#include <WiFi.h>
-#elif defined(ESP8266)
-#include <ESP8266WiFi.h>
-#elif  __has_include(<WiFiNINA.h>)
-#include <WiFiNINA.h
-#elif __has_include(<WiFi101.h>)
-#include <WiFi101.h
-#endif
+#include <Ethernet.h>
 
 #include <ESP_SSLClient.h>
 
-#define WIFI_SSID "WIFI_AP"
-#define WIFI_PASSWORD "WIFI_PASSWORD"
+#define WIZNET_RESET_PIN 26 // Connect W5500 Reset pin to GPIO 26 of ESP32
+#define WIZNET_CS_PIN 5     // Connect W5500 CS pin to GPIO 5 of ESP32
+#define WIZNET_MISO_PIN 19  // Connect W5500 MISO pin to GPIO 19 of ESP32
+#define WIZNET_MOSI_PIN 23  // Connect W5500 MOSI pin to GPIO 23 of ESP32
+#define WIZNET_SCLK_PIN 18  // Connect W5500 SCLK pin to GPIO 18 of ESP32
 
 ESP_SSLClient ssl_client;
 
-// EthernetClient basic_client;
-// GSMClient basic_client;
-WiFiClient basic_client;
+EthernetClient basic_client;
 
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-WiFiMulti multi;
-#endif
+uint8_t Eth_MAC[] = {0x02, 0xF0, 0x0D, 0xBE, 0xEF, 0x01};
+
+void ResetEthernet()
+{
+    Serial.println("Resetting WIZnet W5500 Ethernet Board...  ");
+    pinMode(WIZNET_RESET_PIN, OUTPUT);
+    digitalWrite(WIZNET_RESET_PIN, HIGH);
+    delay(200);
+    digitalWrite(WIZNET_RESET_PIN, LOW);
+    delay(50);
+    digitalWrite(WIZNET_RESET_PIN, HIGH);
+    delay(200);
+}
+
+void networkConnection()
+{
+
+    Ethernet.init(WIZNET_CS_PIN);
+
+    ResetEthernet();
+
+    Serial.println("Starting Ethernet connection...");
+    Ethernet.begin(Eth_MAC);
+
+    unsigned long to = millis();
+
+    while (Ethernet.linkStatus() == LinkOFF || millis() - to < 2000)
+    {
+        delay(100);
+    }
+
+    if (Ethernet.linkStatus() == LinkON)
+    {
+        Serial.print("Connected with IP ");
+        Serial.println(Ethernet.localIP());
+    }
+    else
+    {
+        Serial.println("Can't connect");
+    }
+}
 
 void setup()
 {
     Serial.begin(115200);
 
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-    multi.addAP(WIFI_SSID, WIFI_PASSWORD);
-    multi.run();
-#else
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-#endif
-
-    Serial.print("Connecting to Wi-Fi");
-    unsigned long ms = millis();
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        Serial.print(".");
-        delay(300);
-#if defined(ARDUINO_RASPBERRY_PI_PICO_W)
-        if (millis() - ms > 10000)
-            break;
-#endif
-    }
-    Serial.println();
-    Serial.print("Connected with IP: ");
-    Serial.println(WiFi.localIP());
-    Serial.println();
+    networkConnection();
 
     // ignore server ssl certificate verification
     ssl_client.setInsecure();

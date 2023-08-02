@@ -1,6 +1,3 @@
-#pragma GCC diagnostic ignored "-Wunused-function"
-#pragma GCC diagnostic ignored "-Wvla"
-
 #ifndef ESP_SSLCLIENT_CONST_H
 #define ESP_SSLCLIENT_CONST_H
 
@@ -11,6 +8,8 @@
 
 #include <Arduino.h>
 #include <Client.h>
+
+#define ESP_SSLCLIENT_VALID_TIMESTAMP 1690979919
 
 #ifndef SSLCLIENT_CONNECTION_UPGRADABLE
 #define SSLCLIENT_CONNECTION_UPGRADABLE

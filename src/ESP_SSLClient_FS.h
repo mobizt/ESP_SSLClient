@@ -1,8 +1,8 @@
 #ifndef ESP_SSLClient_FS_H
 #define ESP_SSLClient_FS_H
 
-
-#if (defined(ESP8266) || defined(PICO_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
+#if (defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
+// for ESP8266 and Raspberry Pi Pico (RP2040) only except for Arduino Nano RP2040 Connect 
 #define USE_EMBED_SSL_ENGINE
 #else
 #define USE_LIB_SSL_ENGINE
