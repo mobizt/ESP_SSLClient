@@ -1,10 +1,8 @@
 #ifndef ESP_SSLClient_FS_H
 #define ESP_SSLClient_FS_H
 
-#if defined(ARDUINO)
-#endif
 
-#if defined(ESP8266) || defined(PICO_RP2040)
+#if (defined(ESP8266) || defined(PICO_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #define USE_EMBED_SSL_ENGINE
 #else
 #define USE_LIB_SSL_ENGINE
