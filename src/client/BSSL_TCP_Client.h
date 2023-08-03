@@ -1,7 +1,7 @@
 /**
- * BSSL_TCP_Client v2.0.3 for Arduino devices.
+ * BSSL_TCP_Client v2.0.4 for Arduino devices.
  *
- * Created August 3, 2023
+ * Created August 4, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -307,7 +307,7 @@ public:
 
     int availableForWrite();
 
-    // void setSession(BearSSL_Session *session) {};
+    void setSession(BearSSL_Session *session);
 
     void setKnownKey(const PublicKey *pk, unsigned usages = BR_KEYTYPE_KEYX | BR_KEYTYPE_SIGN);
 

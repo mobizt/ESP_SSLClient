@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.1 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.2 for Arduino devices.
  *
- * Created August 3, 2003
+ * Created August 4, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -119,6 +119,8 @@ public:
 
     int peek() override;
 
+    size_t peekBytes(uint8_t *buffer, size_t length);
+
     void setInsecure();
 
     void enableSSL(bool enable);
@@ -140,6 +142,8 @@ public:
     operator bool() { return connected() > 0; }
 
     int availableForWrite();
+
+    void setSession(BearSSL_Session *session);
 
     void setKnownKey(const PublicKey *pk, unsigned usages = BR_KEYTYPE_KEYX | BR_KEYTYPE_SIGN);
 
@@ -176,6 +180,8 @@ public:
     bool probeMaxFragmentLength(const char *hostname, uint16_t port, uint16_t len);
 
     bool probeMaxFragmentLength(const String &host, uint16_t port, uint16_t len);
+
+    size_t peekAvailable();
 
     const char *peekBuffer();
 

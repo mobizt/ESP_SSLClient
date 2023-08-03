@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.1 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.2 for Arduino devices.
  *
- * Created August 3, 2003
+ * Created August 4, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -231,6 +231,9 @@ int BSSL_SSL_Client::read()
 
 int BSSL_SSL_Client::read(uint8_t *buf, size_t size)
 {
+    if (!_basic_client)
+        return 0;
+
     if (!_secure)
         return _basic_client->read(buf, size);
 
@@ -250,6 +253,9 @@ int BSSL_SSL_Client::read(uint8_t *buf, size_t size)
 
 size_t BSSL_SSL_Client::write(const uint8_t *buf, size_t size)
 {
+    if (!_basic_client)
+        return 0;
+
     if (!_secure)
         return _basic_client->write(buf, size);
 
@@ -367,6 +373,26 @@ int BSSL_SSL_Client::peek()
     return -1;
 }
 
+size_t BSSL_SSL_Client::peekBytes(uint8_t *buffer, size_t length)
+{
+    if (!_basic_client || !_secure)
+        return 0;
+
+    size_t to_copy = 0;
+    if (!_sc)
+        return 0;
+
+    unsigned long _startMillis = millis();
+    while ((available() < (int)length) && ((millis() - _startMillis) < 5000))
+    {
+        yield();
+    }
+
+    to_copy = _recvapp_len < length ? _recvapp_len : length;
+    memcpy(buffer, _recvapp_buf, to_copy);
+    return to_copy;
+}
+
 // Don't validate the chain, just accept whatever is given.  VERY INSECURE!
 void BSSL_SSL_Client::setInsecure()
 {
@@ -442,7 +468,7 @@ void BSSL_SSL_Client::setHandshakeTimeout(unsigned int timeoutMs) { _handshake_t
 
 void BSSL_SSL_Client::flush()
 {
-    if (!_secure)
+    if (!_secure && _basic_client)
     {
         _basic_client->flush();
         return;
@@ -508,6 +534,8 @@ int BSSL_SSL_Client::availableForWrite()
     }
     return 0;
 }
+
+void BSSL_SSL_Client::setSession(BearSSL_Session *session) { _session = session; };
 
 // Assume a given public key, don't validate or use cert info at all
 void BSSL_SSL_Client::setKnownKey(const PublicKey *pk, unsigned usages)
@@ -964,6 +992,11 @@ bool BSSL_SSL_Client::probeMaxFragmentLength(const char *name, uint16_t port, ui
 bool BSSL_SSL_Client::probeMaxFragmentLength(const String &host, uint16_t port, uint16_t len)
 {
     return BSSL_SSL_Client::probeMaxFragmentLength(host.c_str(), port, len);
+}
+
+size_t BSSL_SSL_Client::peekAvailable()
+{
+    return available();
 }
 
 // return a pointer to available data buffer (size = peekAvailable())
@@ -1585,9 +1618,10 @@ int BSSL_SSL_Client::mRunUntil(const unsigned target, unsigned long timeout)
             br_ssl_engine_recvrec_buf(_eng, &len);
             if (lastLen != len)
             {
+                lastLen = len;
 #if defined(ESP_SSLCLIENT_ENABLE_DEBUG)
                 String s = PSTR("Expected bytes count: ");
-                s += lastLen = len;
+                s += len;
                 esp_ssl_debug_print(s.c_str(), _debug_level, esp_ssl_debug_info, __func__);
 #endif
             }
@@ -2018,7 +2052,7 @@ bool BSSL_SSL_Client::mInstallClientX509Validator()
 #endif
         bssl::br_x509_minimal_install_hashes(_x509_minimal.get());
 
-#if (defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT) 
+#if (defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
         if (_now < ESP_SSLCLIENT_VALID_TIMESTAMP)
             _now = time(nullptr);
 #endif

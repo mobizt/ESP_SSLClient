@@ -1,7 +1,7 @@
 /**
- * BSSL_TCP_Client v2.0.3 for Arduino devices.
+ * BSSL_TCP_Client v2.0.4 for Arduino devices.
  *
- * Created August 3, 2023
+ * Created August 4, 2023
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -299,6 +299,8 @@ void BSSL_TCP_Client::setBufferSizes(int recv, int xmit)
 
 int BSSL_TCP_Client::availableForWrite() { return _ssl_client.availableForWrite(); };
 
+void BSSL_TCP_Client::setSession(BearSSL_Session *session) {_ssl_client.setSession(session);};
+
 void BSSL_TCP_Client::setKnownKey(const PublicKey *pk, unsigned usages)
 {
     _ssl_client.setKnownKey(pk, usages);
@@ -383,7 +385,7 @@ bool BSSL_TCP_Client::probeMaxFragmentLength(const String &host, uint16_t port, 
 bool BSSL_TCP_Client::hasPeekBufferAPI() const { return true; }
 
 // return number of byte accessible by peekBuffer()
-size_t BSSL_TCP_Client::peekAvailable() { return _ssl_client.available(); }
+size_t BSSL_TCP_Client::peekAvailable() { return _ssl_client.peekAvailable(); }
 
 // return a pointer to available data buffer (size = peekAvailable())
 // semantic forbids any kind of read() before calling peekConsume()
