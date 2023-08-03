@@ -118,8 +118,7 @@ void setup()
     14 WCDMA Only
     38 LTE Only
     */
-    String result;
-    result = modem.setNetworkMode(38);
+    modem.setNetworkMode(38);
     if (modem.waitResponse(10000L) != 1)
     {
         DBG(" setNetworkMode faill");
