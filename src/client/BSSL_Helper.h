@@ -28,7 +28,7 @@
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include <Arduino.h>
-#include "ESP_SSLClient_FS.h"
+#include "../ESP_SSLClient_FS.h"
 
 #if defined(USE_EMBED_SSL_ENGINE)
 
