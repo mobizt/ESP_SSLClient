@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 /*
  * Get the appropriate Base64 character for a numeric value in the

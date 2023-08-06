@@ -71,13 +71,13 @@ void br_x509_minimal_run(void *t0ctx);
 
 
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 
 
 
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 /*
  * Implementation Notes

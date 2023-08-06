@@ -38,7 +38,7 @@
 #if defined(ESP_SSL_FS_SUPPORTED)
 
 
-#include "bssl/bearssl.h"
+#include "../bssl/bearssl.h"
 #include "BSSL_Helper.h"
 
 using namespace bssl;

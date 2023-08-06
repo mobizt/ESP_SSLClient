@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 static const uint32_t Rcon[] = {
 	0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000, 0x20000000,

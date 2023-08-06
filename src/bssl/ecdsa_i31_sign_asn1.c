@@ -26,7 +26,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define ORDER_LEN   ((BR_MAX_EC_SIZE + 7) >> 3)
 

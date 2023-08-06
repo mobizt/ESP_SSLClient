@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 static void
 in_cbc_init(br_sslrec_in_cbc_context *cc,

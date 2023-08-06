@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 const unsigned char br_hkdf_no_salt = 0;
 

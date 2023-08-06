@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 /* see bearssl_rsa.h */
 br_rsa_compute_modulus

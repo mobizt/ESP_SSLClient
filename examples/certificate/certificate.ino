@@ -17,10 +17,10 @@
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
-#elif  __has_include(<WiFiNINA.h>)
-#include <WiFiNINA.h
+#elif __has_include(<WiFiNINA.h>)
+#include <WiFiNINA.h>
 #elif __has_include(<WiFi101.h>)
-#include <WiFi101.h
+#include <WiFi101.h>
 #endif
 
 #include <ESP_SSLClient.h>
@@ -101,7 +101,7 @@ void setup()
     // If verification time was not set via this function, the device system time will be used
     // ssl_client.setX509Time(time(nullptr));
 
-#elif defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
+#elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
 
     configTime(10000, 0, "pool.ntp.org", "time.nist.gov");
     while (time(nullptr) < ESP_SSLCLIENT_VALID_TIMESTAMP)
@@ -113,12 +113,17 @@ void setup()
     // ssl_client.setX509Time(time(nullptr));
 
 #elif __has_include(<WiFiNINA.h>) || __has_include(<WiFi101.h>)
-    time_t ts = WiFi.getTime();
+    time_t ts = 0;
+    do
+    {
+        ts = WiFi.getTime();
+        delay(100);
+    } while (ts < ESP_SSLCLIENT_VALID_TIMESTAMP);
 
     // The verification time setting is required because the device system time i.e. time(nullptr) is not available in this case.
     ssl_client.setX509Time(ts);
 #endif
-   
+
     // Set the server certificate, intermediate cerificate or root certificate
     ssl_client.setCACert(rootCA);
 

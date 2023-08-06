@@ -70,7 +70,7 @@ void br_skey_decoder_init_main(void *t0ctx);
 void br_skey_decoder_run(void *t0ctx);
 
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define CTX   ((br_skey_decoder_context *)(void *)((unsigned char *)t0ctx - offsetof(br_skey_decoder_context, cpu)))
 #define CONTEXT_NAME   br_skey_decoder_context

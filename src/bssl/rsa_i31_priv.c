@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define U      (2 + ((BR_MAX_RSA_FACTOR + 30) / 31))
 #define TLEN   (8 * U)

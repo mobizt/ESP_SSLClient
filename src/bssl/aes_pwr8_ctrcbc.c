@@ -26,7 +26,7 @@
 #if defined(USE_LIB_SSL_ENGINE)
 
 #define BR_POWER_ASM_MACROS   1
-#include "bssl/inner.h"
+#include "inner.h"
 
 #if BR_POWER8
 

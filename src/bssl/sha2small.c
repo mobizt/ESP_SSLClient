@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define CH(X, Y, Z)    ((((Y) ^ (Z)) & (X)) ^ (Z))
 #define MAJ(X, Y, Z)   (((Y) & (Z)) | (((Y) | (Z)) & (X)))

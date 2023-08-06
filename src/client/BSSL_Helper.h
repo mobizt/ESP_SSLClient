@@ -69,7 +69,7 @@
 
 #elif defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/bearssl.h"
+#include "../bssl/bearssl.h"
 
 #endif
 

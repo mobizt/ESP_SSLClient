@@ -18,9 +18,9 @@
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
 #elif  __has_include(<WiFiNINA.h>)
-#include <WiFiNINA.h
+#include <WiFiNINA.h>
 #elif __has_include(<WiFi101.h>)
-#include <WiFi101.h
+#include <WiFi101.h>
 #endif
 
 #include <ESP_SSLClient.h>

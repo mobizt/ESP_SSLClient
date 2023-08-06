@@ -71,13 +71,13 @@ void br_x509_decoder_run(void *t0ctx);
 
 
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 
 
 
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define CTX   ((br_x509_decoder_context *)(void *)((unsigned char *)t0ctx - offsetof(br_x509_decoder_context, cpu)))
 #define CONTEXT_NAME   br_x509_decoder_context

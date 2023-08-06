@@ -74,7 +74,7 @@ void br_ssl_hs_server_run(void *t0ctx);
 #include <stddef.h>
 #include <string.h>
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 /*
  * This macro evaluates to a pointer to the current engine context.

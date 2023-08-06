@@ -25,7 +25,7 @@
 #include "../ESP_SSLClient_FS.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
-#include "bssl/inner.h"
+#include "inner.h"
 
 #define F(B, C, D)     ((((C) ^ (D)) & (B)) ^ (D))
 #define G(B, C, D)     ((((C) ^ (B)) & (D)) ^ (C))
