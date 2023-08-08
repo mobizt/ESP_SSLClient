@@ -28,6 +28,7 @@ jobs:
           - "bluepill_f103c8_128k"
           - "mkr1000USB"
           - "teensy41"
+          - "renesas-ra"
     steps:
     - uses: actions/checkout@v2
     - name: Cache pip
