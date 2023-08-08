@@ -29,6 +29,7 @@ This library is fully compatible and able to work with [ESP-Mail-Client](https:/
  * Teensy 3.1 to 4.1
  * Arduino Nano RP2040 Connect
  * Raspberry Pi Pico
+ * Arduino UNO R4 WiFi (Renesas).
  
  ### Supposted Networking Devices with Client (with driver) library.
 
