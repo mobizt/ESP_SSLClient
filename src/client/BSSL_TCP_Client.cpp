@@ -254,7 +254,6 @@ bool BSSL_TCP_Client::connectSSL()
         stop();
         return 0;
     }
-
     return 1;
 }
 
@@ -264,8 +263,6 @@ void BSSL_TCP_Client::stop()
 {
     if (!_basic_client)
         return;
-
-    _basic_client->stop();
     _ssl_client.stop();
 }
 
