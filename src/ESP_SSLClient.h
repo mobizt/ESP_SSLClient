@@ -44,7 +44,7 @@ class ESP_SSLClient
 {
 public:
     ESP_SSLClient(){};
-    ~ESP_SSLClient(){};
+    virtual ~ESP_SSLClient(){};
 };
 
 #endif
