@@ -38,7 +38,6 @@ const char apn[] = "YourAPN";
 const char gprsUser[] = "";
 const char gprsPass[] = "";
 
-
 #include <TinyGsmClient.h>
 
 #include <ESP_SSLClient.h>
@@ -124,24 +123,6 @@ void setup()
         DBG(" setNetworkMode faill");
         return;
     }
-
-    // ignore server ssl certificate verification
-    ssl_client.setInsecure();
-
-    // Set the receive and transmit buffers size in bytes for memory allocation (512 to 16384).
-    ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
-
-    /** Call setDebugLevel(level) to set the debug
-     * esp_ssl_debug_none = 0
-     * esp_ssl_debug_error = 1
-     * esp_ssl_debug_warn = 2
-     * esp_ssl_debug_info = 3
-     * esp_ssl_debug_dump = 4
-     */
-    ssl_client.setDebugLevel(1);
-
-    // assign the basic client
-    ssl_client.setClient(&basic_client);
 }
 
 void loop()
@@ -216,6 +197,24 @@ void loop()
         SerialMon.println("GPRS connected");
     }
 #endif
+
+    // ignore server ssl certificate verification
+    ssl_client.setInsecure();
+
+    // Set the receive and transmit buffers size in bytes for memory allocation (512 to 16384).
+    ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
+
+    /** Call setDebugLevel(level) to set the debug
+     * esp_ssl_debug_none = 0
+     * esp_ssl_debug_error = 1
+     * esp_ssl_debug_warn = 2
+     * esp_ssl_debug_info = 3
+     * esp_ssl_debug_dump = 4
+     */
+    ssl_client.setDebugLevel(1);
+
+    // assign the basic client
+    ssl_client.setClient(&basic_client);
 
     Serial.println("---------------------------------");
     Serial.print("Connecting to server...");
