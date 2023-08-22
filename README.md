@@ -161,13 +161,43 @@ The ESP_SSLClient available functions are similare to the WiFiClientSecure.h cla
 
 The Sessions and ServerSessions for ESP8266 BearSSL will be renamed to BearSSL_Sessions and BearSSL_ServerSessions respectively.
 
-For ESP32, the certificate bundle is not currenty supported.
+For all functions available in this library, see [src/client/BSSL_TCP_Client.h](/src/client/BSSL_TCP_Client.h)
 
 ## Additional Functions
 
+The following are the additional functions over ESP8266 WiFiClientSecure.
+
+### Set the client.
+
+param **`client`** The pointer to Client interface.
+
+param **`enableSSL`** The ssl option; true for enable, false for disable.
+
+```cpp
+void setClient(Client *client, bool enableSSL = true);
+```
 
 
-#### Validate the last Client connection with these host and port.
+### Set debug level.
+
+param **`level`** The debug level or esp_ssl_client_debug_level.
+
+esp_ssl_debug_none = 0
+
+esp_ssl_debug_error = 1
+
+esp_ssl_debug_warn = 2
+
+esp_ssl_debug_info = 3
+
+esp_ssl_debug_dump = 4
+
+```cpp
+void setDebugLevel(int level);
+```
+
+
+### Validate the last Client connection with these host and port.
 
 param **`host`** The server host name.
 
@@ -180,7 +210,7 @@ void validate(const char *host, uint16_t port);
 ```
 
 
-#### Validate the last Client connection with these IP and port.
+### Validate the last Client connection with these IP and port.
 
 param **`ip`** The server IP to connect.
 
@@ -191,6 +221,41 @@ The Client connection will be closed when the provided IP or port is not match w
 ```cpp
 void validate(IPAddress ip, uint16_t port);
 ```
+
+
+### Enable/disable the SSL layer transport.
+
+param **`enable`** The enable option; true for enable, false to disable.
+
+```cpp
+void enableSSL(bool enable);
+```
+
+
+### Upgrade the current connection by setting up the SSL and perform the SSL handshake.
+
+return **`operating result`**.
+
+```cpp
+bool connectSSL();
+```
+
+### Get the TCP timeout in seconds.
+
+return **`The TCP timeout`** in seconds.
+
+```cpp
+int getTimeout();
+```
+
+### Set the SSL handshake timeout in seconds.
+
+param **`handshake_timeout`** The SSL handshake timeout in seconds.
+
+```cpp
+void setHandshakeTimeout(unsigned long handshake_timeout);
+```
+
 
 ## MIT License
 
