@@ -40,10 +40,10 @@ This library is fully compatible and able to work with [ESP-Mail-Client](https:/
 
 Some PHY and MAC ethernet chips are already supported by Core `WiFiClientSecure` and ethernet libraries which this ESP_SSLClient is not needed.
 
-The following PHY ethernet chips i.e. LAN8720, TLK101, RTL8201, DP83848, DM9051, KSZ8041 and KSZ8081 were supported by ESP32 Arduino Core natively then this and can be use with `WiFiClientSecure.h` and `ETH.h` libraries as normally.
+The following PHY ethernet chips i.e. LAN8720, TLK101, RTL8201, DP83848, DM9051, KSZ8041 and KSZ8081 were supported by ESP32 Arduino Core natively then this and can be used with `WiFiClientSecure.h` and `ETH.h` libraries as normally.
 
 
-The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported by ESP8266 Arduino Core natively and can be use with `WiFiClientSecure.h` and `ENC28J60lwIP.h` or `W5100lwIP.h` or `W5500lwIP.h` libraries as normally.
+The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported by ESP8266 Arduino Core natively and can be used with `WiFiClientSecure.h` and `ENC28J60lwIP.h` or `W5100lwIP.h` or `W5500lwIP.h` libraries as normally.
 
  
 ## Features
