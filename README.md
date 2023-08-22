@@ -163,6 +163,35 @@ The Sessions and ServerSessions for ESP8266 BearSSL will be renamed to BearSSL_S
 
 For ESP32, the certificate bundle is not currenty supported.
 
+## Additional Functions
+
+
+
+#### Validate the last Client connection with these host and port.
+
+param **`host`** The server host name.
+
+param **`port`** The server port to connect.
+
+The Client connection will be closed when the provided host or port is not match with that of last connection.
+
+```cpp
+void validate(const char *host, uint16_t port);
+```
+
+
+#### Validate the last Client connection with these IP and port.
+
+param **`ip`** The server IP to connect.
+
+param **`port`** The server port to connect.
+
+The Client connection will be closed when the provided IP or port is not match with that of last connection.
+
+```cpp
+void validate(IPAddress ip, uint16_t port);
+```
+
 ## MIT License
 
 Copyright (c) 2023 mobizt
