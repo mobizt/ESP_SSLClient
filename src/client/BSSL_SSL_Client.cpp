@@ -1394,10 +1394,9 @@ int BSSL_SSL_Client::mIsClientInitialized(bool notify)
 
 int BSSL_SSL_Client::mConnectBasicClient(const char *host, IPAddress ip, uint16_t port)
 {
-    if (!mIsClientInitialized(true))
-        return 0;
 
-    mConnectionValidate(host, ip, port);
+    if (!mConnectionValidate(host, ip, port))
+        return 0;
 
     if (!(host ? _basic_client->connect(host, port) : _basic_client->connect(ip, port)))
     {
@@ -1592,15 +1591,20 @@ int BSSL_SSL_Client::mConnectSSL(const char *host)
     return 1;
 }
 
-void BSSL_SSL_Client::mConnectionValidate(const char *host, IPAddress ip, uint16_t port)
+bool BSSL_SSL_Client::mConnectionValidate(const char *host, IPAddress ip, uint16_t port)
 {
-    if (_basic_client->connected() &&
+    if (!mIsClientInitialized(true))
+        return false;
+
+    if (_basic_client && _basic_client->connected() &&
                 host
             ? (strcasecmp(host, _host.c_str()) != 0 || port != _port)
             : (ip != _ip || port != _port))
     {
         _basic_client->stop();
     }
+
+    return true;
 }
 
 int BSSL_SSL_Client::mRunUntil(const unsigned target, unsigned long timeout)

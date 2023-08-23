@@ -240,7 +240,7 @@ private:
 
     int mConnectSSL(const char *host = nullptr);
 
-    void mConnectionValidate(const char *host, IPAddress ip, uint16_t port);
+    bool mConnectionValidate(const char *host, IPAddress ip, uint16_t port);
 
     int mRunUntil(const unsigned target, unsigned long timeout = 0);
 
