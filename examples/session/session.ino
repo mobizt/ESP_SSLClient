@@ -3,8 +3,6 @@
  *
  * This example works on the Arduino-Pico SDK from Earle F. Philhower.
  * https://github.com/earlephilhower/arduino-pico
- * 
- * The session resumption may not work on some device e.g. Arm Cortex-M0 due to platform restriction in BearSSL
  *
  * Email: suwatchai@outlook.com
  *
