@@ -80,7 +80,7 @@ public:
      * @param enableSSL The ssl option; true for enable, false for disable.
      * 
      * Due to the client pointer is assigned, to avoid dangling pointer, 
-     * basic_client should be existed as long as it was used by ssl_client for transportation.
+     * client should be existed as long as it was used for transportation.
      */
     void setClient(Client *client, bool enableSSL = true);
 
