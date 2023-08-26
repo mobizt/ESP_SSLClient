@@ -103,7 +103,9 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   // by not set any buffer size or set the rx buffer size to maximum SSL record size (16384) and 512 for tx buffer size.  
   ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
   
-  // assign the basic client
+  // Assign the basic client
+  // Due to the basic_client pointer is assigned, to avoid dangling pointer, basic_client should be existed 
+  // as long as it was used by ssl_client for transportation.
   ssl_client.setClient(&basic_client);
 
   Serial.print("Connecting to server...");
@@ -181,6 +183,8 @@ The following are the additional functions over ESP8266 WiFiClientSecure.
 param **`client`** The pointer to Client interface.
 
 param **`enableSSL`** The ssl option; true for enable, false for disable.
+
+Due to the client pointer is assigned, to avoid dangling pointer, basic_client should be existed as long as it was used by ssl_client for transportation.
 
 ```cpp
 void setClient(Client *client, bool enableSSL = true);

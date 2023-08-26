@@ -210,7 +210,9 @@ void loop()
      */
     ssl_client.setDebugLevel(1);
 
-    // assign the basic client
+    // Assign the basic client
+    // Due to the basic_client pointer is assigned, to avoid dangling pointer, basic_client should be existed
+    // as long as it was used by ssl_client for transportation.
     ssl_client.setClient(&basic_client);
 
     Serial.println("---------------------------------");
