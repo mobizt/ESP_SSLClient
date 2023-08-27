@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.10 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.11 for Arduino devices.
  *
- * Created August 22, 2003
+ * Created August 27, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -98,7 +98,7 @@ public:
 
     uint8_t connected() override;
 
-    void validate(const char* host, uint16_t port);
+    void validate(const char *host, uint16_t port);
 
     void validate(IPAddress ip, uint16_t port);
 
@@ -127,8 +127,6 @@ public:
     int connectSSL(IPAddress ip, uint16_t port);
 
     int connectSSL(const char *host, uint16_t port);
-
-    
 
     void stop() override;
 
@@ -342,7 +340,7 @@ private:
     unsigned long _handshake_timeout = 60000;
     bool _isSSLEnabled = false;
     String _host;
-    uint16_t _port;
+    uint16_t _port = 0;
     IPAddress _ip;
 };
 

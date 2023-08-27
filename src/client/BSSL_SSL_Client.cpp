@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.10 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.11 for Arduino devices.
  *
- * Created August 22, 2003
+ * Created August 27, 2003
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -435,8 +435,6 @@ int BSSL_SSL_Client::connectSSL(IPAddress ip, uint16_t port)
     if (!mIsClientInitialized(true))
         return 0;
 
-    validate(ip, port);
-
     if (!_basic_client->connected() && !mConnectBasicClient(nullptr, ip, port))
         return 0;
 
@@ -451,8 +449,6 @@ int BSSL_SSL_Client::connectSSL(const char *host, uint16_t port)
 
     if (!mIsClientInitialized(true))
         return 0;
-
-    validate(host, port);
 
     if (!_basic_client->connected() && !mConnectBasicClient(host, IPAddress(), port))
         return 0;
