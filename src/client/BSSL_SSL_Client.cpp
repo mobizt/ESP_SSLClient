@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.12 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.13 for Arduino devices.
  *
- * Created September 2, 2003
+ * Created June 12, 2024
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
@@ -350,8 +350,8 @@ size_t BSSL_SSL_Client::write(uint8_t b)
 size_t BSSL_SSL_Client::write_P(PGM_P buf, size_t size)
 {
     char dest[size];
-    memcpy_P((void *)dest, buf, size);
-    return write((const uint8_t *)dest, size);
+    memcpy_P(reinterpret_cast<void *>(dest), buf, size);
+    return write(reinterpret_cast<const uint8_t *>(dest), size);
 }
 
 size_t BSSL_SSL_Client::write(Stream &stream)
@@ -493,7 +493,7 @@ void BSSL_SSL_Client::stop()
     mFreeSSL();
 }
 
-void BSSL_SSL_Client::setTimeout(unsigned int timeoutMs) { _timeout = timeoutMs; }
+void BSSL_SSL_Client::setTimeout(unsigned int timeoutMs) { _timeout_ms = timeoutMs; }
 
 void BSSL_SSL_Client::setHandshakeTimeout(unsigned int timeoutMs) { _handshake_timeout = timeoutMs; }
 
@@ -931,7 +931,7 @@ void BSSL_SSL_Client::setCertStore(CertStoreBase *certStore)
 // Set custom list of ciphers
 bool BSSL_SSL_Client::setCiphers(const uint16_t *cipherAry, int cipherCount)
 {
-    _cipher_list = (uint16_t *)mallocImpl(cipherCount);
+    _cipher_list = reinterpret_cast<uint16_t *>(mallocImpl(cipherCount));
     if (!_cipher_list)
     {
 #if defined(ESP_SSLCLIENT_ENABLE_DEBUG)
@@ -1036,7 +1036,7 @@ void BSSL_SSL_Client::setPrivateKey(const char *private_key)
 bool BSSL_SSL_Client::loadCACert(Stream &stream, size_t size)
 {
     bool ret = false;
-    auto buff = (char *)mallocImpl(size);
+    auto buff = reinterpret_cast<char *>(mallocImpl(size));
     if (size == stream.readBytes(buff, size))
     {
         setCACert(buff);
@@ -1049,7 +1049,7 @@ bool BSSL_SSL_Client::loadCACert(Stream &stream, size_t size)
 bool BSSL_SSL_Client::loadCertificate(Stream &stream, size_t size)
 {
     bool ret = false;
-    auto buff = (char *)mallocImpl(size);
+    auto buff = reinterpret_cast<char *>(mallocImpl(size));
     if (size == stream.readBytes(buff, size))
     {
         setCertificate(buff);
@@ -1062,7 +1062,7 @@ bool BSSL_SSL_Client::loadCertificate(Stream &stream, size_t size)
 bool BSSL_SSL_Client::loadPrivateKey(Stream &stream, size_t size)
 {
     bool ret = false;
-    auto buff = (char *)mallocImpl(size);
+    auto buff = reinterpret_cast<char *>(mallocImpl(size));
     if (size == stream.readBytes(buff, size))
     {
         setPrivateKey(buff);
@@ -1089,7 +1089,7 @@ BSSL_SSL_Client &BSSL_SSL_Client::operator=(const BSSL_SSL_Client &other)
     stop();
     setClient(other._basic_client);
     _use_insecure = other._use_insecure;
-    _timeout = other._timeout;
+    _timeout_ms = other._timeout_ms;
     _handshake_timeout = other._handshake_timeout;
     return *this;
 }
@@ -1099,7 +1099,7 @@ bool BSSL_SSL_Client::operator==(const BSSL_SSL_Client &rhs)
     return _basic_client == rhs._basic_client;
 }
 
-unsigned int BSSL_SSL_Client::getTimeout() const { return _timeout; }
+unsigned int BSSL_SSL_Client::getTimeout() const { return _timeout_ms; }
 
 void BSSL_SSL_Client::setSecure(const char *rootCABuff, const char *cli_cert, const char *cli_key)
 {
@@ -1184,7 +1184,7 @@ bool BSSL_SSL_Client::mProbeMaxFragmentLength(Client *probe, uint16_t len)
         return false; // Invalid size
     }
     int ttlLen = sizeof(clientHelloHead_P) + (2 + sizeof(suites_P)) + (sizeof(clientHelloTail_P) + 1);
-    uint8_t *clientHello = (uint8_t *)mallocImpl(ttlLen);
+    uint8_t *clientHello = reinterpret_cast<uint8_t *>(mallocImpl(ttlLen));
     if (!clientHello)
     {
 #if defined(ESP_SSLCLIENT_ENABLE_DEBUG)
@@ -1333,21 +1333,21 @@ bool BSSL_SSL_Client::mProbeMaxFragmentLength(Client *probe, uint16_t len)
         uint8_t lenBytes[2];
         ret = probe->readBytes(lenBytes, 2);
         handLen -= 2;
-        uint16_t extLen = lenBytes[1] | (lenBytes[0] << 8);
-        if ((ret != 2) || (handLen <= 0) || (extLen > 32) || (extLen > handLen))
+        uint16_t _extLen = lenBytes[1] | (lenBytes[0] << 8);
+        if ((ret != 2) || (handLen <= 0) || (_extLen > 32) || (_extLen > handLen))
         {
             return send_abort(probe, supportsLen);
         }
         if ((typeBytes[0] == 0x00) && (typeBytes[1] == 0x01))
         { // MFLN extension!
             // If present and 1-byte in length, it's supported
-            return send_abort(probe, extLen == 1 ? true : false);
+            return send_abort(probe, _extLen == 1 ? true : false);
         }
         // Skip the extension, move to next one
         uint8_t junk[32];
-        ret = probe->readBytes(junk, extLen);
-        handLen -= extLen;
-        if (ret != extLen)
+        ret = probe->readBytes(junk, _extLen);
+        handLen -= _extLen;
+        if (ret != _extLen)
         {
             return send_abort(probe, supportsLen);
         }
@@ -1462,8 +1462,8 @@ int BSSL_SSL_Client::mConnectSSL(const char *host)
     _sc = std::make_shared<br_ssl_client_context>();
     _eng = &_sc->eng; // Allocation/deallocation taken care of by the _sc shared_ptr
 
-    _iobuf_in = (unsigned char *)mallocImpl(_iobuf_in_size);
-    _iobuf_out = (unsigned char *)mallocImpl(_iobuf_out_size);
+    _iobuf_in = reinterpret_cast<unsigned char *>(mallocImpl(_iobuf_in_size));
+    _iobuf_out = reinterpret_cast<unsigned char *>(mallocImpl(_iobuf_out_size));
 
     if (!_sc || !_iobuf_in || !_iobuf_out)
     {
@@ -1785,7 +1785,7 @@ unsigned BSSL_SSL_Client::mUpdateEngine()
             else if (state & BR_SSL_SENDAPP)
             {
                 size_t alen;
-                unsigned char *buf = br_ssl_engine_sendapp_buf(_eng, &alen);
+                const unsigned char *buf = br_ssl_engine_sendapp_buf(_eng, &alen);
                 // engine check
                 if (alen == 0 || buf == nullptr)
                 {
@@ -1938,7 +1938,7 @@ void BSSL_SSL_Client::mPrintSSLState(const unsigned state, int level, const char
 
 bool BSSL_SSL_Client::mIsSecurePort(uint16_t port)
 {
-    int size = *(&_secure_ports + 1) - _secure_ports;
+    int size = 26;
     for (int i = 0; i < size; i++)
     {
         if (port == _secure_ports[i])
@@ -1982,7 +1982,7 @@ void BSSL_SSL_Client::mClearAuthenticationSettings()
 
 void BSSL_SSL_Client::mClear()
 {
-    _timeout = 15000;
+    _timeout_ms = 15000;
     _sc = nullptr;
     _eng = nullptr;
     _x509_minimal = nullptr;
@@ -2116,14 +2116,14 @@ void BSSL_SSL_Client::mFreeSSL()
     _recvapp_len = 0;
     // This connection is toast
     _handshake_done = false;
-    _timeout = 15000;
+    _timeout_ms = 15000;
     _secure = false;
     _is_connected = false;
 }
 
 uint8_t *BSSL_SSL_Client::mStreamLoad(Stream &stream, size_t size)
 {
-    uint8_t *dest = (uint8_t *)malloc(size + 1);
+    uint8_t *dest = reinterpret_cast<uint8_t *>(malloc(size + 1));
     if (!dest)
     {
         return nullptr;
@@ -2159,7 +2159,7 @@ void *BSSL_SSL_Client::mallocImpl(size_t len, bool clear)
     ESP.setExternalHeap();
 #endif
 
-    p = (void *)malloc(newLen);
+    p = reinterpret_cast<void *>(malloc(newLen));
     bool nn = p ? true : false;
 
 #if defined(ESP_SSLCLIENT_ESP8266_USE_EXTERNAL_HEAP)
@@ -2178,7 +2178,7 @@ void *BSSL_SSL_Client::mallocImpl(size_t len, bool clear)
 // Free reserved memory at pointer.
 void BSSL_SSL_Client::freeImpl(void *ptr)
 {
-    void **p = (void **)ptr;
+    void **p = reinterpret_cast<void **>(ptr);
     if (*p)
     {
         free(*p);

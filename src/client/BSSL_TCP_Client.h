@@ -1,7 +1,7 @@
 /**
- * BSSL_TCP_Client v2.0.12 for Arduino devices.
+ * BSSL_TCP_Client v2.0.13 for Arduino devices.
  *
- * Created August 27, 2023
+ * Created June 12, 2024
  *
  * The MIT License (MIT)
  * Copyright (c) 2023 K. Suwatchai (Mobizt)
@@ -66,8 +66,6 @@ protected:
     bool _use_insecure;
 
 public:
-    BSSL_TCP_Client *next;
-
     // The default class constructor
     BSSL_TCP_Client();
 
@@ -78,8 +76,8 @@ public:
      * Set the client.
      * @param client The pointer to Client interface.
      * @param enableSSL The ssl option; true for enable, false for disable.
-     * 
-     * Due to the client pointer is assigned, to avoid dangling pointer, 
+     *
+     * Due to the client pointer is assigned, to avoid dangling pointer,
      * client should be existed as long as it was used for transportation.
      */
     void setClient(Client *client, bool enableSSL = true);
@@ -329,9 +327,9 @@ public:
      */
     void setBufferSizes(int recv, int xmit);
 
-    operator bool() { return connected(); }
+    operator bool() override { return connected(); }
 
-    int availableForWrite();
+    int availableForWrite() override;
 
     void setSession(BearSSL_Session *session);
 
@@ -377,13 +375,13 @@ public:
 
     bool probeMaxFragmentLength(const String &host, uint16_t port, uint16_t len);
 
-    bool hasPeekBufferAPI() const;
+    bool hasPeekBufferAPI() const EMBED_SSL_ENGINE_BASE_OVERRIDE;
 
-    size_t peekAvailable();
+    size_t peekAvailable() EMBED_SSL_ENGINE_BASE_OVERRIDE;
 
-    const char *peekBuffer();
+    const char *peekBuffer() EMBED_SSL_ENGINE_BASE_OVERRIDE;
 
-    void peekConsume(size_t consume);
+    void peekConsume(size_t consume) EMBED_SSL_ENGINE_BASE_OVERRIDE;
 
     /**
      * Set the Root CA or CA certificate.
@@ -426,7 +424,8 @@ private:
     uint16_t _port;
     BSSL_SSL_Client _ssl_client;
     Client *_basic_client = nullptr;
-    unsigned long _timeout = 15000;
+    // Renameing from _timeout which also defined in parent's Stream class.
+    unsigned long _timeout_ms = 15000;
     unsigned long _handshake_timeout = 60000;
 
     char *mStreamLoad(Stream &stream, size_t size);

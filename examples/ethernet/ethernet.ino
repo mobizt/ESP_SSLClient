@@ -1,9 +1,6 @@
 /**
  * This example shows how to connect to server using W5500, ESP32 and SSL Client.
  *
- * This example works on the Arduino-Pico SDK from Earle F. Philhower.
- * https://github.com/earlephilhower/arduino-pico
- *
  * Email: suwatchai@outlook.com
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
@@ -107,12 +104,12 @@ void loop()
     {
         Serial.println(" ok");
         Serial.println("Send POST request...");
-        ssl_client.print("POST /api/users HTTP/1.1\n");
-        ssl_client.print("Host: reqres.in\n");
-        ssl_client.print("Content-Type: application/json\n");
+        ssl_client.print("POST /api/users HTTP/1.1\r\n");
+        ssl_client.print("Host: reqres.in\r\n");
+        ssl_client.print("Content-Type: application/json\r\n");
         ssl_client.print("Content-Length: ");
         ssl_client.print(payload.length());
-        ssl_client.print("\n\n");
+        ssl_client.print("\r\n\r\n");
         ssl_client.print(payload);
 
         Serial.print("Read response...");

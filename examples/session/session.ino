@@ -1,9 +1,6 @@
 /**
  * This example shows how to connect to server via https using the SSL client and store the session to speed up handshake.
  *
- * This example works on the Arduino-Pico SDK from Earle F. Philhower.
- * https://github.com/earlephilhower/arduino-pico
- *
  * Email: suwatchai@outlook.com
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
@@ -13,16 +10,20 @@
  */
 
 #include <Arduino.h>
-#if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
+#if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_GIGA)
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
-#elif __has_include(<WiFiNINA.h>)
+#elif __has_include(<WiFiNINA.h>) || defined(ARDUINO_NANO_RP2040_CONNECT)
 #include <WiFiNINA.h>
 #elif __has_include(<WiFi101.h>)
 #include <WiFi101.h>
-#elif __has_include(<WiFiS3.h>)
+#elif __has_include(<WiFiS3.h>) || defined(ARDUINO_UNOWIFIR4)
 #include <WiFiS3.h>
+#elif __has_include(<WiFiC3.h>) || defined(ARDUINO_PORTENTA_C33)
+#include <WiFiC3.h>
+#elif __has_include(<WiFi.h>)
+#include <WiFi.h>
 #endif
 
 #include <ESP_SSLClient.h>
@@ -107,19 +108,19 @@ void connect(const char *method, BearSSL_Session *session, uint32_t timeout, boo
     if (uri[0] != '/')
         ssl_client.print("/");
     ssl_client.print(uri);
-    ssl_client.print(" HTTP/1.1\n");
+    ssl_client.print(" HTTP/1.1\r\n");
     ssl_client.print("Host: ");
     ssl_client.print(host);
-    ssl_client.print("\n");
+    ssl_client.print("\r\n");
 
     if (strcasecmp(method, "post") == 0 || strcasecmp(method, "put") == 0)
     {
         ssl_client.print("Content-Type: ");
         ssl_client.print(contentType);
-        ssl_client.print("\n");
+        ssl_client.print("\r\n");
         ssl_client.print("Content-Length: ");
         ssl_client.print(strlen(payload));
-        ssl_client.print("\n\n");
+        ssl_client.print("\r\n\r\n");
         ssl_client.print(payload);
     }
 

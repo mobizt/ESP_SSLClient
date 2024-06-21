@@ -1,5 +1,7 @@
 /**
- * This example shows how to connect to server via https using the SSL client.
+ * This example shows how to use SSL_Client to connect to SSE (Server-Sent Events) server.
+ * 
+ * Locate the sse.php on your PHP web server to test.
  *
  * Email: suwatchai@outlook.com
  *
@@ -33,13 +35,45 @@
 
 ESP_SSLClient ssl_client;
 
-// EthernetClient basic_client;
-// GSMClient basic_client;
 WiFiClient basic_client;
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
 WiFiMulti multi;
 #endif
+
+
+String host = "your_server_ip_or_host";
+String uri = "/sse.php"; // if sse.php is located in the root directory.
+uint16_t port = 443;
+
+bool connect()
+{
+    Serial.println();
+    Serial.print("Connecting to server...");
+
+    if (ssl_client.connect(host.c_str(), port))
+    {
+        Serial.println(" ok");
+
+        String header = "GET ";
+        header += uri;
+        header += " HTTP/1.1\r\n";
+        header += "Host: ";
+        header += host;
+        header += "\r\n\r\n";
+
+        int ret = ssl_client.print(header);
+        return ret == header.length();
+    }
+    else
+    {
+        ssl_client.stop();
+        Serial.println(" failed\n");
+        delay(2000);
+    }
+
+    return false;
+}
 
 void setup()
 {
@@ -87,47 +121,17 @@ void setup()
     // Due to the basic_client pointer is assigned, to avoid dangling pointer, basic_client should be existed
     // as long as it was used by ssl_client for transportation.
     ssl_client.setClient(&basic_client);
+
+     connect();
 }
 
 void loop()
 {
-    Serial.println("---------------------------------");
-    Serial.print("Connecting to server...");
+    if (!ssl_client.connected() && !connect())
+        return;
 
-    String payload = "{\"title\":\"hello\"}";
-
-    if (ssl_client.connect("reqres.in", 443))
+    while (ssl_client.connected() && ssl_client.available())
     {
-        Serial.println(" ok");
-        Serial.println("Send POST request...");
-        ssl_client.print("POST /api/users HTTP/1.1\r\n");
-        ssl_client.print("Host: reqres.in\r\n");
-        ssl_client.print("Content-Type: application/json\r\n");
-        ssl_client.print("Content-Length: ");
-        ssl_client.print(payload.length());
-        ssl_client.print("\r\n\r\n");
-        ssl_client.print(payload);
-
-        Serial.print("Read response...");
-
-        unsigned long ms = millis();
-        while (!ssl_client.available() && millis() - ms < 3000)
-        {
-            delay(0);
-        }
-        Serial.println();
-        while (ssl_client.available())
-        {
-            Serial.print((char)ssl_client.read());
-        }
-        Serial.println();
+        Serial.print(ssl_client.readStringUntil('\r'));
     }
-    else
-        Serial.println(" failed\n");
-
-    ssl_client.stop();
-
-    Serial.println();
-
-    delay(5000);
 }

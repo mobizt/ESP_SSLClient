@@ -1,9 +1,6 @@
 /**
  * This example shows how to parse public key.
  *
- * This example works on the Arduino-Pico SDK from Earle F. Philhower.
- * https://github.com/earlephilhower/arduino-pico
- *
  * Email: suwatchai@outlook.com
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient

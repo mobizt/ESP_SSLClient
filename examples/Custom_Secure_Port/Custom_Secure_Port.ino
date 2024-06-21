@@ -1,5 +1,9 @@
 /**
- * This example shows how to connect to server via https using the SSL client.
+ * This example shows how to connect to server via custom secure port.
+ *
+ * The standard secure ports as listed here are supported by this library https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers.
+ *
+ * If the port you want to connect with SSL/TLS is not in the list, you can begin the connection in the plain text mode first and upgrade later.
  *
  * Email: suwatchai@outlook.com
  *
@@ -8,7 +12,6 @@
  * Copyright (c) 2023 mobizt
  *
  */
-
 #include <Arduino.h>
 #if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_GIGA)
 #include <WiFi.h>
@@ -83,25 +86,39 @@ void setup()
      */
     ssl_client.setDebugLevel(1);
 
-    // Assign the basic client
-    // Due to the basic_client pointer is assigned, to avoid dangling pointer, basic_client should be existed
-    // as long as it was used by ssl_client for transportation.
-    ssl_client.setClient(&basic_client);
+    // Assign the basic client to use in non-secure mode.
+    ssl_client.setClient(&basic_client, false /* set enable SSL option to false */);
 }
 
 void loop()
 {
     Serial.println("---------------------------------");
-    Serial.print("Connecting to server...");
+
+    Serial.print("Connecting to server via HTTP...");
 
     String payload = "{\"title\":\"hello\"}";
 
-    if (ssl_client.connect("reqres.in", 443))
+    String server = "your_server.com"; // The server to connect.
+    uint16_t port = 5443;              // The port to connect.
+
+    if (ssl_client.connect(server.c_str(), port))
     {
         Serial.println(" ok");
-        Serial.println("Send POST request...");
-        ssl_client.print("POST /api/users HTTP/1.1\r\n");
-        ssl_client.print("Host: reqres.in\r\n");
+
+        Serial.print("Upgrade to HTTPS...");
+        if (!ssl_client.connectSSL())
+        {
+            Serial.println(" failed\r\n");
+            return;
+        }
+
+        Serial.println(" ok");
+
+        Serial.println("Send GET request...");
+        ssl_client.print("GET / HTTP/1.1\r\n");
+        ssl_client.print("Host: ");
+        ssl_client.print(server);
+        ssl_client.print("\r\n");
         ssl_client.print("Content-Type: application/json\r\n");
         ssl_client.print("Content-Length: ");
         ssl_client.print(payload.length());
@@ -109,7 +126,6 @@ void loop()
         ssl_client.print(payload);
 
         Serial.print("Read response...");
-
         unsigned long ms = millis();
         while (!ssl_client.available() && millis() - ms < 3000)
         {
