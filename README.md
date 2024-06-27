@@ -253,9 +253,17 @@ return **`operating result`**.
 bool connectSSL();
 ```
 
-### Get the TCP timeout in seconds.
+### Set the TCP connection timeout in seconds.
 
-return **`The TCP timeout`** in seconds.
+param **`seconds`** The TCP connection timeout in seconds.
+
+```cpp
+int setTimeout(uint32_t seconds);
+```
+
+### Get the TCP connection timeout in seconds.
+
+return **`The TCP connection timeout`** in seconds.
 
 ```cpp
 int getTimeout();
@@ -269,6 +277,21 @@ param **`handshake_timeout`** The SSL handshake timeout in seconds.
 void setHandshakeTimeout(unsigned long handshake_timeout);
 ```
 
+### Set the TCP session timeout in seconds.
+
+param **`seconds`** The TCP session timeout in seconds.
+
+The minimum session timeout value is 60 seconds.
+
+Set 0 to disable session timed out.
+
+If There is no data to send (write) within this period, the current connection will be closed and reconnect.
+
+This requires when ESP32 WiFiClient was used.
+
+```cpp
+int setSessionTimeout(uint32_t seconds);
+```
 
 ## MIT License
 

@@ -23,7 +23,6 @@ peek    KEYWORD2
 setInsecure KEYWORD2
 enableSSL   KEYWORD2
 connectSSL  KEYWORD2
-setTimeout  KEYWORD2
 flush   KEYWORD2
 setBufferSizes  KEYWORD2
 setPreSharedKey KEYWORD2
@@ -36,6 +35,7 @@ loadPrivateKey  KEYWORD2
 verify  KEYWORD2
 setHandshakeTimeout KEYWORD2
 setTimeout  KEYWORD2
+setSessionTimeout   KEYWORD2
 stop    KEYWORD2
 availableForWrite   KEYWORD2
 setSession  KEYWORD2

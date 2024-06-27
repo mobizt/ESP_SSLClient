@@ -1,6 +1,6 @@
 {
   "name": "ESP_SSLClient",
-  "version": "2.1.8",
+  "version": "2.1.9",
   "keywords": "communication, REST, esp32, esp8266, arduino",
   "description": "This library provided the Secure Layer Networking (SSL/TLS) TCP Client for ESP8266, ESP32 and Raspberry Pi RP2040, Teensy, SAMD, AVR and other Arduino devices (except for avr) that support external networking interfaces e.g., WiFiClient, EthernetClient and GSMClient.",
   "repository": {

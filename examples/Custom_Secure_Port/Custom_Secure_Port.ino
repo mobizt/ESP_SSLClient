@@ -86,6 +86,12 @@ void setup()
      */
     ssl_client.setDebugLevel(1);
 
+    // In case ESP32 WiFiClient, the session timeout should be set,
+    // if the TCP session was kept alive because it was unable to detect the server disconnection.
+#if defined(ESP32)
+    ssl_client.setSessionTimeout(120); // Set the timeout in seconds (>=120 seconds)
+#endif
+
     // Assign the basic client to use in non-secure mode.
     ssl_client.setClient(&basic_client, false /* set enable SSL option to false */);
 }
