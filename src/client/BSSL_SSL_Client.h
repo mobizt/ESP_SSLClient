@@ -1,5 +1,5 @@
 /**
- * BSSL_SSL_Client library v1.0.15 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.16 for Arduino devices.
  *
  * Created August 6, 2024
  *
@@ -40,7 +40,7 @@
 #include "../ESP_SSLClient_FS.h"
 #include "../ESP_SSLClient_Const.h"
 
-#if defined(USE_EMBED_SSL_ENGINE)
+#if defined(USE_EMBED_SSL_ENGINE) && !defined(ARDUINO_ARCH_RP2040)
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE override
 #else
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE

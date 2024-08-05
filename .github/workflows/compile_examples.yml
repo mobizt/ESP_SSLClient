@@ -17,9 +17,9 @@ jobs:
       fail-fast: false
       matrix:
         example: 
-        - "examples/http_upgrade/http_upgrade.ino"
-        - "examples/https/https.ino"
-        - "examples/mqtt/mqtt.ino"
+        - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
+        - "examples/HTTPs/HTTPs.ino"
+        - "examples/MQTT/MQTT.ino"
     steps:
     - uses: actions/checkout@v2
     - name: Cache pip
@@ -63,9 +63,9 @@ jobs:
       fail-fast: false
       matrix:
         example: 
-        - "examples/http_upgrade/http_upgrade.ino"
-        - "examples/https/https.ino"
-        - "examples/mqtt/mqtt.ino"
+        - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
+        - "examples/HTTPs/HTTPs.ino"
+        - "examples/MQTT/MQTT.ino"
     steps:
     - uses: actions/checkout@v2
     - name: Cache pip
