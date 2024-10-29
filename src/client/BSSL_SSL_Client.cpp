@@ -1,7 +1,7 @@
 /**
- * BSSL_SSL_Client library v1.0.16 for Arduino devices.
+ * BSSL_SSL_Client library v1.0.17 for Arduino devices.
  *
- * Created August 6, 2024
+ * Created October 29, 2024
  *
  * This work contains codes based on WiFiClientSecure from Earle F. Philhower and SSLClient from OSU OPEnS Lab.
  *
