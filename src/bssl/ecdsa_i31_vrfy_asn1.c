@@ -23,7 +23,7 @@
  */
 
 
-#include "client/BSSL_Config.h"
+#include "bssl_config.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
 #include "inner.h"

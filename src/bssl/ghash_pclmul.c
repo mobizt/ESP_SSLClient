@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "client/BSSL_Config.h"
+#include "bssl_config.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
 #define BR_ENABLE_INTRINSICS   1
