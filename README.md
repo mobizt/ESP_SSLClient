@@ -80,6 +80,14 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   #elif __has_include(<WiFiS3.h>)
   #include <WiFiS3.h>
   #endif
+
+  #define ENABLE_DEBUG // To enable debugging
+  #define ENABLE_ERROR_STRING // To show details in error
+  #define ENABLE_PSRAM // To use PSRAM if board supports it
+  #define DEBUG_PORT Serial // To define the serial port for debug printing
+
+  // If board supports the filesystem APIs, to use CertStore class.
+  // #define ENABLE_FS
   
   #include <ESP_SSLClient.h>
 
@@ -116,12 +124,13 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   {
     Serial.println(" ok");
     Serial.println("Send POST request...");
-    ssl_client.print("POST /api/users HTTP/1.1\n");
-    ssl_client.print("Host: reqres.in\n");
-    ssl_client.print("Content-Type: application/json\n");
+    ssl_client.print("POST /api/users HTTP/1.1\r\n");
+    ssl_client.print("Host: reqres.in\r\n");
+    ssl_client.print("Content-Type: application/json\r\n");
+    ssl_client.print("x-api-key: reqres-free-v1\r\n");
     ssl_client.print("Content-Length: ");
     ssl_client.print(payload.length());
-    ssl_client.print("\n\n");
+    ssl_client.print("\r\n\r\n");
     ssl_client.print(payload);
 
     Serial.print("Read response...");

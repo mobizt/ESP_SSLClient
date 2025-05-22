@@ -5,12 +5,17 @@
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
  *
- * Copyright (c) 2023 mobizt
+ * Copyright (c) 2025 mobizt
  *
  */
 #include <Arduino.h>
 
+#define ENABLE_DEBUG        // To enable debugging
+#define ENABLE_ERROR_STRING // To show details in error
+#define ENABLE_PSRAM        // To use PSRAM if board supports it
+#define DEBUG_PORT Serial   // To define the serial port for debug printing
 #include <ESP_SSLClient.h>
+#include <WiFiClient.h>
 
 const char public_key[] PROGMEM = "-----BEGIN PUBLIC KEY-----\n"
                                   "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnD6sFeCJf9bR7PH/YisP\n"

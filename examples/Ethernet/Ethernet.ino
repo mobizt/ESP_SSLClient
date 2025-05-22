@@ -5,13 +5,17 @@
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
  *
- * Copyright (c) 2023 mobizt
+ * Copyright (c) 2025 mobizt
  *
  */
 
 #include <Arduino.h>
 #include <Ethernet.h>
 
+#define ENABLE_DEBUG        // To enable debugging
+#define ENABLE_ERROR_STRING // To show details in error
+#define ENABLE_PSRAM        // To use PSRAM if board supports it
+#define DEBUG_PORT Serial   // To define the serial port for debug printing
 #include <ESP_SSLClient.h>
 
 #define WIZNET_RESET_PIN 26 // Connect W5500 Reset pin to GPIO 26 of ESP32
@@ -107,6 +111,7 @@ void loop()
         ssl_client.print("POST /api/users HTTP/1.1\r\n");
         ssl_client.print("Host: reqres.in\r\n");
         ssl_client.print("Content-Type: application/json\r\n");
+        ssl_client.print("x-api-key: reqres-free-v1\r\n");
         ssl_client.print("Content-Length: ");
         ssl_client.print(payload.length());
         ssl_client.print("\r\n\r\n");

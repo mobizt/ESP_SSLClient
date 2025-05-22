@@ -5,9 +5,10 @@
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
  *
- * Copyright (c) 2023 mobizt
+ * Copyright (c) 2025 mobizt
  *
  */
+
 #include <Arduino.h>
 #if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W) || defined(ARDUINO_GIGA)
 #include <WiFi.h>
@@ -25,7 +26,12 @@
 #include <WiFi.h>
 #endif
 
+#define ENABLE_DEBUG        // To enable debugging
+#define ENABLE_ERROR_STRING // To show details in error
+#define ENABLE_PSRAM        // To use PSRAM if board supports it
+#define DEBUG_PORT Serial   // To define the serial port for debug printing
 #include <ESP_SSLClient.h>
+#include <WiFiClient.h>
 
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"
@@ -119,6 +125,7 @@ void loop()
     ssl_client.print("POST /api/users HTTP/1.1\r\n");
     ssl_client.print("Host: reqres.in\r\n");
     ssl_client.print("Content-Type: application/json\r\n");
+    ssl_client.print("x-api-key: reqres-free-v1\r\n");
     ssl_client.print("Content-Length: ");
     ssl_client.print(payload.length());
     ssl_client.print("\r\n\r\n");

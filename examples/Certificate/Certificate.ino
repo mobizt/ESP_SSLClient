@@ -5,7 +5,7 @@
  *
  * Github: https://github.com/mobizt/ESP_SSLSClient
  *
- * Copyright (c) 2023 mobizt
+ * Copyright (c) 2025 mobizt
  *
  */
 
@@ -26,7 +26,12 @@
 #include <WiFi.h>
 #endif
 
+#define ENABLE_DEBUG        // To enable debugging
+#define ENABLE_ERROR_STRING // To show details in error
+#define ENABLE_PSRAM        // To use PSRAM if board supports it
+#define DEBUG_PORT Serial   // To define the serial port for debug printing
 #include <ESP_SSLClient.h>
+#include <WiFiClient.h>
 
 #define WIFI_SSID "WIFI_AP"
 #define WIFI_PASSWORD "WIFI_PASSWORD"

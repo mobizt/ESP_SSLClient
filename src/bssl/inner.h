@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-#include "../ESP_SSLClient_FS.h"
+#include "client/BSSL_Config.h"
 #if defined(USE_LIB_SSL_ENGINE)
 
 #ifndef INNER_H__
