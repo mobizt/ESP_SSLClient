@@ -1909,7 +1909,7 @@ private:
         esp_ssl_debug_print(dest, _debug_level, level, func_name);
     }
 
-    void mPrintSSLState(const unsigned br_state, int level, const char *func_name)
+    void mPrintSSLState(const unsigned state, int level, const char *func_name)
     {
         const char *msg = nullptr;
 
