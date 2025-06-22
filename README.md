@@ -83,7 +83,6 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
 
   #define ENABLE_DEBUG // To enable debugging
   #define ENABLE_ERROR_STRING // To show details in error
-  #define ENABLE_PSRAM // To use PSRAM if board supports it
   #define DEBUG_PORT Serial // To define the serial port for debug printing
 
   // If board supports the filesystem APIs, to use CertStore class.
@@ -314,4 +313,4 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 `THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
 
-*Last updated 2025-05-27 UTC.*
+*Last updated 2025-06-22 UTC.*
