@@ -88,13 +88,9 @@ For PlatformIO:
 [env:rpipicow]  
 
 platform = https://github.com/maxgerhardt/platform-raspberrypi.git  
-
 board = rpipicow  
-
 framework = arduino  
-
 board_build.core = earlephilhower  
-
 monitor_speed = 115200
 
 ```
