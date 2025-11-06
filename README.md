@@ -109,53 +109,32 @@ monitor_speed = 115200
 
 ```cpp
 
-    #include <ESP_SSLClient.h>
+#include <ESP_SSLClient.h>
 
-    ESP_SSLClient ssl_client;
+ESP_SSLClient ssl_client;
+EthernetClient basic_client;
 
-    EthernetClient basic_client;
+ssl_client.setInsecure();    // Skip certificate verification
+ssl_client.setDebugLevel(1); // Debug: 0–4
+ssl_client.setBufferSizes(1024, 1024);
+ssl_client.setClient(&basic_client);
 
+if (ssl_client.connect("reqres.in", 443))
+{
 
+    ssl_client.print("POST /api/users HTTP/1.1\r\n");
+    ssl_client.print("Host: reqres.in\r\n");
+    ssl_client.print("Content-Type: application/json\r\n");
+    ssl_client.print("x-api-key: reqres-free-v1\r\n");
+    ssl_client.print("Content-Length: 27\r\n\r\n");
+    ssl_client.print("{\"title\":\"hello\"}");
+    while (!ssl_client.available())
+        delay(0);
+    while (ssl_client.available())
+        Serial.print((char)ssl_client.read());
+}
 
-    ssl_client.setInsecure();    // Skip certificate verification
-
-    ssl_client.setDebugLevel(1); // Debug: 0–4
-
-    ssl_client.setBufferSizes(1024, 1024);
-
-    ssl_client.setClient(&basic_client);
-
-
-
-    if (ssl_client.connect("reqres.in", 443))
-
-    {
-
-        ssl_client.print("POST /api/users HTTP/1.1\r\n");
-
-        ssl_client.print("Host: reqres.in\r\n");
-
-        ssl_client.print("Content-Type: application/json\r\n");
-
-        ssl_client.print("x-api-key: reqres-free-v1\r\n");
-
-        ssl_client.print("Content-Length: 27\r\n\r\n");
-
-        ssl_client.print("{\"title\":\"hello\"}");
-
-
-
-        while (!ssl_client.available())
-
-            delay(0);
-
-        while (ssl_client.available())
-
-            Serial.print((char)ssl_client.read());
-
-    }
-
-    ssl_client.stop();
+ssl_client.stop();
 
 ```
 
