@@ -111,6 +111,11 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   // If board supports the filesystem APIs, to use CertStore class.
   // #define ENABLE_FS
   
+  // If PSRAM is supported.
+  // #define ENABLE_PSTAM
+
+
+  
   #include <ESP_SSLClient.h>
 
   ESP_SSLClient ssl_client;
