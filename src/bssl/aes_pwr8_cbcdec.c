@@ -23,7 +23,7 @@
  */
 
 #include "bssl_config.h"
-#if defined(USE_LIB_SSL_ENGINE)
+#if defined(BSSL_BUILD_INTERNAL_CORE)
 
 #define BR_POWER_ASM_MACROS   1
 #include "inner.h"

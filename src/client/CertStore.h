@@ -19,7 +19,7 @@
 #ifndef BSSL_CERTSTORE_H
 #define BSSL_CERTSTORE_H
 
-#if defined(USE_LIB_SSL_ENGINE)
+#if defined(BSSL_BUILD_INTERNAL_CORE)
 
 #if defined(ENABLE_FS)
 

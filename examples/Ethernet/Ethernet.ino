@@ -15,6 +15,27 @@
 #define ENABLE_DEBUG        // To enable debugging
 #define ENABLE_ERROR_STRING // To show details in error
 #define DEBUG_PORT Serial   // To define the serial port for debug printing
+
+// When use in insecure mode (no certificate and fingerprint verification).
+// This can save memory and program space usage.
+#define SSLCLIENT_INSECURE_ONLY
+
+// When pre-memory allocation are prefered (stack memory used).
+// Don't define when dynamic memory allocation is prefered (heap or PSRAM memory used).
+// #define STATIC_IN_BUFFER_SIZE 2048
+// #define STATIC_OUT_BUFFER_SIZE 1024
+// #define STATIC_X509_CONTEXT
+// #define STATIC_SSLCLIENT_CONTEXT
+
+// For using external BearSSL library.
+// When othere libraries that contain BearSSL source files are used
+// with this library, define this macro to exclude the internal BearSSL library
+// to be compiled thats makes compilation error.
+// #define BSSL_BUILD_EXTERNAL_CORE
+
+// If board supports the filesystem APIs, to use CertStore class.
+// #define ENABLE_FS
+
 #include <ESP_SSLClient.h>
 
 #define WIZNET_RESET_PIN 26 // Connect W5500 Reset pin to GPIO 26 of ESP32

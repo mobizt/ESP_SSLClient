@@ -23,7 +23,7 @@
  */
 
 #include "bssl_config.h"
-#if defined(USE_LIB_SSL_ENGINE)
+#if defined(BSSL_BUILD_INTERNAL_CORE)
 
 #ifndef BR_BEARSSL_KDF_H__
 #define BR_BEARSSL_KDF_H__

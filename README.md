@@ -1,4 +1,4 @@
-# ESP SSLClient
+# ESP_SSLClient
 
 ![Compile](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_library.yml/badge.svg) ![Examples](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_examples.yml/badge.svg)  [![Github Stars](https://img.shields.io/github/stars/mobizt/ESP_SSLClient?logo=github)](https://github.com/mobizt/ESP_SSLClient/stargazers) ![Github Issues](https://img.shields.io/github/issues/mobizt/ESP_SSLClient?logo=github)
 
@@ -29,8 +29,11 @@ This library is fully compatible and able to work with [ESP-Mail-Client](https:/
  * Arduino Nano RP2040 Connect
  * Raspberry Pi Pico
  * Arduino UNO R4 WiFi (Renesas).
+ * Arduino Mega 2560 with external SRAM.
+
+ The minimum RAM requires is approx. 9.8k bytes while the program space usage is 178 k bytes in Arduino Mega 2560 with external SRAM when uses in insecure mode.
  
- ### Supposted Networking Devices with Client (with driver) library.
+ ### Supposted all networking devices with Client (with driver) library.
 
  * WIZnet Wxxx series modules
  * All SPI Ethernet modules
@@ -48,13 +51,11 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
  
 ## Features
 
-* **Uses BearSSL SSL engine for all devices (since v2.0.0).**
+* **Uses BearSSL SSL engine for cryptography.**
 
 * **Supports all Arduino devices with enough program flash space (128k or more).**
 
-* **First and only one SSL Client library that supports SSL/TLS connection upgrades.**
-
-* **Support STARTTLS in Email application.**
+* **Onnly SSL Client library that supports TLS upgrades.**
 
 * **Use Client pointer without copy to constructor then it can be changed seemlessly at run time.**
 
@@ -63,6 +64,11 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
 * **Easy to use as it provides the same interface functions as in ESP8266's WiFiClientSecure.**
 
 * **Supports the authentications as in WiFiClientSecure.**
+
+* **Supports external PSRAM in ESP32, ESP8266 and some AVR devices.**
+
+* **Memmery buffer and SSL context can be defined as static and dynamic.**
+
 
 
 
@@ -85,6 +91,23 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   #define ENABLE_ERROR_STRING // To show details in error
   #define DEBUG_PORT Serial // To define the serial port for debug printing
 
+  // When use in insecure mode (no certificate and fingerprint verification).
+  // This can save memory and program space usage.
+  #define SSLCLIENT_INSECURE_ONLY
+
+  // When pre-memory allocation are prefered (stack memory used).
+  // Don't define when dynamic memory allocation is prefered (heap or PSRAM memory used).
+  #define STATIC_IN_BUFFER_SIZE 2048
+  #define STATIC_OUT_BUFFER_SIZE 1024
+  #define STATIC_X509_CONTEXT
+  #define STATIC_SSLCLIENT_CONTEXT
+  
+  // For using external BearSSL library.
+  // When othere libraries that contain BearSSL source files are used
+  // with this library, define this macro to exclude the internal BearSSL library
+  // to be compiled thats makes compilation error.
+  // #define BSSL_BUILD_EXTERNAL_CORE
+
   // If board supports the filesystem APIs, to use CertStore class.
   // #define ENABLE_FS
   
@@ -105,9 +128,10 @@ The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported
   */
   ssl_client.setDebugLevel(1);
 
-  // Set the receive and transmit buffers size in bytes for memory allocation (512 to 16384).
+  // Set the receive and transmit buffers size in bytes for dynamic memory allocation at runtime (512 to 16384).
   // For server that does not support SSL fragment size negotiation, leave this setting the default value
-  // by not set any buffer size or set the rx buffer size to maximum SSL record size (16384) and 512 for tx buffer size.  
+  // by not set any buffer size or set the rx buffer size to maximum SSL record size (16384) and 512 for tx buffer size.
+  // If STATIC_IN_BUFFER_SIZE or STATIC_OUT_BUFFER_SIZE is defined, the value set by this function will be ignored.
   ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
   
   // Assign the basic client
@@ -313,4 +337,4 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 `THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
 
-*Last updated 2025-06-22 UTC.*
+*Last updated 2025-11-06 UTC.*

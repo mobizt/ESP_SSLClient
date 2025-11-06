@@ -13,9 +13,9 @@
 #define ESP_SSLCLIENT_ESP8266_USE_EXTERNAL_HEAP
 #endif
 
-#if defined(USE_LIB_SSL_ENGINE) || defined(USE_EMBED_SSL_ENGINE)
+#if defined(BSSL_BUILD_INTERNAL_CORE) || defined(BSSL_BUILD_PLATFORM_CORE)
 
-#if defined(USE_EMBED_SSL_ENGINE)
+#if defined(BSSL_BUILD_PLATFORM_CORE)
 #include <list>
 #include <errno.h>
 #include <algorithm>
@@ -44,11 +44,11 @@
 
 #endif
 
-#if defined(USE_LIB_SSL_ENGINE)
+#if defined(BSSL_BUILD_INTERNAL_CORE)
 
 using namespace bssl;
 
-#elif defined(USE_EMBED_SSL_ENGINE)
+#elif defined(BSSL_BUILD_PLATFORM_CORE)
 
 #include "BearSSLHelpers.h"
 #include "Helper.h"
@@ -79,11 +79,13 @@ public:
         setClient(client);
         mClear();
         mClearAuthenticationSettings();
+#if !defined(SSLCLIENT_INSECURE_ONLY)
 #if defined(ENABLE_FS)
         _certStore = nullptr; // Don't want to remove cert store on a clear, should be long lived
 #endif
         _sk = nullptr;
-#if defined(USE_EMBED_SSL_ENGINE)
+#endif
+#if defined(BSSL_BUILD_PLATFORM_CORE)
         stack_thunk_add_ref();
 #endif
     }
@@ -98,7 +100,7 @@ public:
         }
         mFreeSSL();
         mClearAuthenticationSettings();
-#if defined(USE_EMBED_SSL_ENGINE)
+#if defined(BSSL_BUILD_PLATFORM_CORE)
         stack_thunk_del_ref();
 #endif
     }
@@ -119,8 +121,10 @@ public:
 
     int connect(IPAddress ip, uint16_t port) override
     {
+#if !defined(__AVR__)
         if (_isSSLEnabled && mIsSecurePort(port)) // SSL connect
             return connectSSL(ip, port);
+#endif
 
         if (!mConnectBasicClient(nullptr, ip, port))
             return 0;
@@ -133,8 +137,10 @@ public:
 
     int connect(const char *host, uint16_t port) override
     {
+#if !defined(__AVR__)
         if (_isSSLEnabled && mIsSecurePort(port))
             return connectSSL(host, port);
+#endif
 
         if (!mConnectBasicClient(host, IPAddress(), port))
             return 0;
@@ -164,9 +170,9 @@ public:
             if (_basic_client->getWriteError())
             {
 #if defined(ENABLE_DEBUG)
-                String s = PSTR("Socket was unexpectedly interrupted. m_client error: ");
-                s += _basic_client->getWriteError();
-                esp_ssl_debug_print(s.c_str(), _debug_level, esp_ssl_debug_info, __func__);
+                char s_buffer[64];
+                snprintf_P(s_buffer, sizeof(s_buffer), PSTR("Socket was unexpectedly interrupted. m_client error: %u"), (unsigned int)_basic_client->getWriteError());
+                esp_ssl_debug_print(s_buffer, _debug_level, esp_ssl_debug_info, __func__);
 #endif
                 setWriteError(esp_ssl_write_error);
             }
@@ -177,10 +183,6 @@ public:
                 // esp_ssl_debug_print(PSTR("Socket was dropped unexpectedly (this can be an alternative to closing the connection)."), _debug_level, esp_ssl_debug_warn, func_name);
 #endif
             }
-
-            // set the write error so the engine doesn't try to close the connection
-            _is_connected = false;
-            stop();
         }
         else if (!wr_ok)
         {
@@ -197,12 +199,24 @@ public:
 
     void validate(IPAddress ip, uint16_t port) { mConnectionValidate(nullptr, ip, port); }
 
+    /**
+     * @brief Checks if the current connection is encrypted (SSL/TLS).
+     * @return bool True if SSL/TLS is enabled and active, false otherwise (plain TCP).
+     */
+    bool isSecure() const
+    {
+        return _secure;
+    }
+
     int available() override
     {
         if (!mIsClientInitialized(false))
             return 0;
 
-        if (!_secure)
+        // ssl engine receive buffer is available
+        if (_recvapp_len > 0)
+            return (int)_recvapp_len;
+        else if (!_secure)
             return _basic_client->available();
 
         // connection check
@@ -245,22 +259,35 @@ public:
     int read(uint8_t *buf, size_t size) override
     {
         if (!mIsClientInitialized(false))
-            return 0;
+            return -1;
 
-        if (!_secure)
+        // plain mode: delegate to basic client if no SSL data remains
+        if (!_secure && _recvapp_len == 0)
             return _basic_client->read(buf, size);
 
-        // check that the engine is ready to read
+        // This ensures the engine runs and updates _recvapp_buf / _recvapp_len
         if (available() <= 0 || !size)
             return -1;
-        // read the buffer, send the ack, and return the bytes read
-        _recvapp_buf = br_ssl_engine_recvapp_buf(_eng, &_recvapp_len);
+
+        // Check if the engine gave us data to read.
+        if (_recvapp_len == 0 || _recvapp_buf == nullptr)
+            return -1;
+
+        // Determine actual read amount
         const size_t read_amount = size > _recvapp_len ? _recvapp_len : size;
-        if (buf)
+
+        if (buf && read_amount > 0)
             memcpy(buf, _recvapp_buf, read_amount);
-        // tell engine we read that many bytes
+
+        // CRITICAL: Acknowledge consumed data AND manually advance the local pointer.
+        // The ack updates the internal BearSSL consumed counter.
         br_ssl_engine_recvapp_ack(_eng, read_amount);
-        // tell the user we read that many bytes
+
+        // Advance the local pointer to the next unread byte (relative to the current block)
+        // And decrease the remaining length.
+        _recvapp_buf += read_amount;
+        _recvapp_len -= read_amount;
+
         return read_amount;
     }
 
@@ -372,7 +399,7 @@ public:
     int peek() override
     {
 
-        if ((!_sc && _secure) || !available())
+        if ((_secure) || !available())
         {
 #if defined(ENABLE_DEBUG)
             esp_ssl_debug_print(PSTR("Not connected, none left available."), _debug_level, esp_ssl_debug_error, __func__);
@@ -399,8 +426,6 @@ public:
             return 0;
 
         size_t to_copy = 0;
-        if (!_sc)
-            return 0;
 
         unsigned long _startMillis = millis();
         while ((available() < (int)length) && ((millis() - _startMillis) < 5000))
@@ -445,7 +470,7 @@ public:
         if (!_basic_client->connected() && !mConnectBasicClient(host, IPAddress(), port))
             return 0;
 
-        _host = host;
+        strcpy(_host, host);
         _port = port;
         _connect_with_ip = false;
 
@@ -523,12 +548,22 @@ public:
         const int MAX_IN_OVERHEAD = 325;
 
         // The data buffers must be between 512B and 16KB
-        recv = std::max(512, std::min(16384, recv));
-        xmit = std::max(512, std::min(16384, xmit));
+
+#if !defined(STATIC_IN_BUFFER_SIZE)
+        recv = (recv < 512) ? 512 : ((recv > 16384) ? 16384 : recv);
+#else
+        recv = (STATIC_IN_BUFFER_SIZE < 512) ? 512 : ((STATIC_IN_BUFFER_SIZE > 16384) ? 16384 : STATIC_IN_BUFFER_SIZE);
+#endif
+#if !defined(STATIC_OUT_BUFFER_SIZE)
+        xmit = (xmit < 512) ? 512 : ((xmit > 16384) ? 16384 : xmit);
+#else
+        xmit = (STATIC_OUT_BUFFER_SIZE < 512) ? 512 : ((STATIC_OUT_BUFFER_SIZE > 16384) ? 16384 : STATIC_OUT_BUFFER_SIZE);
+#endif
 
         // Add in overhead for SSL protocol
         recv += MAX_IN_OVERHEAD;
         xmit += MAX_OUT_OVERHEAD;
+
         _iobuf_in_size = recv;
         _iobuf_out_size = xmit;
     }
@@ -565,6 +600,9 @@ public:
 
     void setSession(BearSSL_Session *session) { _session = session; };
 
+    void setX509Time(uint32_t now) { _now = now; }
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
     void setKnownKey(const PublicKey *pk, unsigned usages = BR_KEYTYPE_KEYX | BR_KEYTYPE_SIGN)
     {
         mClearAuthenticationSettings();
@@ -640,8 +678,6 @@ public:
         _ta = ta;
     }
 
-    void setX509Time(time_t now) { _now = now; }
-
     void setClientRSACert(const X509List *chain, const PrivateKey *sk)
     {
         if (_esp32_chain)
@@ -675,237 +711,67 @@ public:
         _allowed_usages = allowed_usages;
         _cert_issuer_key_type = cert_issuer_key_type;
     }
+#endif
 
     int getMFLNStatus() { return connected() && br_ssl_engine_get_mfln_negotiated(_eng); }
 
     int getLastSSLError(char *dest, size_t len)
     {
         int err = 0;
-#if defined(ENABLE_ERROR_STRING)
-        const char *recv_fatal = "";
-        const char *send_fatal = "";
-#endif
-        if (_sc)
-            err = br_ssl_engine_last_error(_eng);
+        int error_code_for_lookup = 0; // New variable to isolate the base error for the switch
 
+        err = br_ssl_engine_last_error(_eng);
+
+        // 1. Determine the effective error code for lookup
         if (_oom_err)
+        {
             err = -1000;
+            error_code_for_lookup = -1000;
+        }
         else
         {
-            if (err & BR_ERR_RECV_FATAL_ALERT)
+            error_code_for_lookup = err;
+
+            // Clear alert flags from the lookup value, but preserve them in 'err' (the return value)
+            if (error_code_for_lookup & BR_ERR_RECV_FATAL_ALERT)
             {
-#if defined(ENABLE_ERROR_STRING)
-                recv_fatal = PSTR("SSL received fatal alert - ");
-#endif
-                err &= ~BR_ERR_RECV_FATAL_ALERT;
+                error_code_for_lookup &= ~BR_ERR_RECV_FATAL_ALERT;
             }
-            if (err & BR_ERR_SEND_FATAL_ALERT)
+            if (error_code_for_lookup & BR_ERR_SEND_FATAL_ALERT)
             {
-#if defined(ENABLE_ERROR_STRING)
-                send_fatal = PSTR("SSL sent fatal alert - ");
-#endif
-                err &= ~BR_ERR_SEND_FATAL_ALERT;
+                error_code_for_lookup &= ~BR_ERR_SEND_FATAL_ALERT;
             }
-        }
-#if defined(ENABLE_ERROR_STRING)
-        const char *t = "";
-        switch (err)
-        {
-        case -1000:
-            t = PSTR("Unable to allocate memory for SSL structures and buffers.");
-            break;
-        case BR_ERR_BAD_PARAM:
-            t = PSTR("Caller-provided parameter is incorrect.");
-            break;
-        case BR_ERR_BAD_STATE:
-            t = PSTR("Operation requested by the caller cannot be applied with the current context state (e.g. reading data while outgoing data is waiting to be sent).");
-            break;
-        case BR_ERR_UNSUPPORTED_VERSION:
-            t = PSTR("Incoming protocol or record version is unsupported.");
-            break;
-        case BR_ERR_BAD_VERSION:
-            t = PSTR("Incoming record version does not match the expected version.");
-            break;
-        case BR_ERR_BAD_LENGTH:
-            t = PSTR("Incoming record length is invalid.");
-            break;
-        case BR_ERR_TOO_LARGE:
-            t = PSTR("Incoming record is too large to be processed, or buffer is too small for the handshake message to send.");
-            break;
-        case BR_ERR_BAD_MAC:
-            t = PSTR("Decryption found an invalid padding, or the record MAC is not correct.");
-            break;
-        case BR_ERR_NO_RANDOM:
-            t = PSTR("No initial entropy was provided, and none can be obtained from the OS.");
-            break;
-        case BR_ERR_UNKNOWN_TYPE:
-            t = PSTR("Incoming record type is unknown.");
-            break;
-        case BR_ERR_UNEXPECTED:
-            t = PSTR("Incoming record or message has wrong type with regards to the current engine state.");
-            break;
-        case BR_ERR_BAD_CCS:
-            t = PSTR("ChangeCipherSpec message from the peer has invalid contents.");
-            break;
-        case BR_ERR_BAD_ALERT:
-            t = PSTR("Alert message from the peer has invalid contents (odd length).");
-            break;
-        case BR_ERR_BAD_HANDSHAKE:
-            t = PSTR("Incoming handshake message decoding failed.");
-            break;
-        case BR_ERR_OVERSIZED_ID:
-            t = PSTR("ServerHello contains a session ID which is larger than 32 bytes.");
-            break;
-        case BR_ERR_BAD_CIPHER_SUITE:
-            t = PSTR("Server wants to use a cipher suite that we did not claim to support. This is also reported if we tried to advertise a cipher suite that we do not support.");
-            break;
-        case BR_ERR_BAD_COMPRESSION:
-            t = PSTR("Server wants to use a compression that we did not claim to support.");
-            break;
-        case BR_ERR_BAD_FRAGLEN:
-            t = PSTR("Server's max fragment length does not match client's.");
-            break;
-        case BR_ERR_BAD_SECRENEG:
-            t = PSTR("Secure renegotiation failed.");
-            break;
-        case BR_ERR_EXTRA_EXTENSION:
-            t = PSTR("Server sent an extension type that we did not announce, or used the same extension type several times in a single ServerHello.");
-            break;
-        case BR_ERR_BAD_SNI:
-            t = PSTR("Invalid Server Name Indication contents (when used by the server, this extension shall be empty).");
-            break;
-        case BR_ERR_BAD_HELLO_DONE:
-            t = PSTR("Invalid ServerHelloDone from the server (length is not 0).");
-            break;
-        case BR_ERR_LIMIT_EXCEEDED:
-            t = PSTR("Internal limit exceeded (e.g. server's public key is too large).");
-            break;
-        case BR_ERR_BAD_FINISHED:
-            t = PSTR("Finished message from peer does not match the expected value.");
-            break;
-        case BR_ERR_RESUME_MISMATCH:
-            t = PSTR("Session resumption attempt with distinct version or cipher suite.");
-            break;
-        case BR_ERR_INVALID_ALGORITHM:
-            t = PSTR("Unsupported or invalid algorithm (ECDHE curve, signature algorithm, hash function).");
-            break;
-        case BR_ERR_BAD_SIGNATURE:
-            t = PSTR("Invalid signature in ServerKeyExchange or CertificateVerify message.");
-            break;
-        case BR_ERR_WRONG_KEY_USAGE:
-            t = PSTR("Peer's public key does not have the proper type or is not allowed for the requested operation.");
-            break;
-        case BR_ERR_NO_CLIENT_AUTH:
-            t = PSTR("Client did not send a certificate upon request, or the client certificate could not be validated.");
-            break;
-        case BR_ERR_IO:
-            t = PSTR("I/O error or premature close on transport stream.");
-            break;
-        case BR_ERR_X509_INVALID_VALUE:
-            t = PSTR("Invalid value in an ASN.1 structure.");
-            break;
-        case BR_ERR_X509_TRUNCATED:
-            t = PSTR("Truncated certificate or other ASN.1 object.");
-            break;
-        case BR_ERR_X509_EMPTY_CHAIN:
-            t = PSTR("Empty certificate chain (no certificate at all).");
-            break;
-        case BR_ERR_X509_INNER_TRUNC:
-            t = PSTR("Decoding error: inner element extends beyond outer element size.");
-            break;
-        case BR_ERR_X509_BAD_TAG_CLASS:
-            t = PSTR("Decoding error: unsupported tag class (application or private).");
-            break;
-        case BR_ERR_X509_BAD_TAG_VALUE:
-            t = PSTR("Decoding error: unsupported tag value.");
-            break;
-        case BR_ERR_X509_INDEFINITE_LENGTH:
-            t = PSTR("Decoding error: indefinite length.");
-            break;
-        case BR_ERR_X509_EXTRA_ELEMENT:
-            t = PSTR("Decoding error: extraneous element.");
-            break;
-        case BR_ERR_X509_UNEXPECTED:
-            t = PSTR("Decoding error: unexpected element.");
-            break;
-        case BR_ERR_X509_NOT_CONSTRUCTED:
-            t = PSTR("Decoding error: expected constructed element, but is primitive.");
-            break;
-        case BR_ERR_X509_NOT_PRIMITIVE:
-            t = PSTR("Decoding error: expected primitive element, but is constructed.");
-            break;
-        case BR_ERR_X509_PARTIAL_BYTE:
-            t = PSTR("Decoding error: BIT STRING length is not multiple of 8.");
-            break;
-        case BR_ERR_X509_BAD_BOOLEAN:
-            t = PSTR("Decoding error: BOOLEAN value has invalid length.");
-            break;
-        case BR_ERR_X509_OVERFLOW:
-            t = PSTR("Decoding error: value is off-limits.");
-            break;
-        case BR_ERR_X509_BAD_DN:
-            t = PSTR("Invalid distinguished name.");
-            break;
-        case BR_ERR_X509_BAD_TIME:
-            t = PSTR("Invalid date/time representation.");
-            break;
-        case BR_ERR_X509_UNSUPPORTED:
-            t = PSTR("Certificate contains unsupported features that cannot be ignored.");
-            break;
-        case BR_ERR_X509_LIMIT_EXCEEDED:
-            t = PSTR("Key or signature size exceeds internal limits.");
-            break;
-        case BR_ERR_X509_WRONG_KEY_TYPE:
-            t = PSTR("Key type does not match that which was expected.");
-            break;
-        case BR_ERR_X509_BAD_SIGNATURE:
-            t = PSTR("Signature is invalid.");
-            break;
-        case BR_ERR_X509_TIME_UNKNOWN:
-            t = PSTR("Validation time is unknown.");
-            break;
-        case BR_ERR_X509_EXPIRED:
-            t = PSTR("Certificate is expired or not yet valid.");
-            break;
-        case BR_ERR_X509_DN_MISMATCH:
-            t = PSTR("Issuer/Subject DN mismatch in the chain.");
-            break;
-        case BR_ERR_X509_BAD_SERVER_NAME:
-            t = PSTR("Expected server name was not found in the chain.");
-            break;
-        case BR_ERR_X509_CRITICAL_EXTENSION:
-            t = PSTR("Unknown critical extension in certificate.");
-            break;
-        case BR_ERR_X509_NOT_CA:
-            t = PSTR("Not a CA, or path length constraint violation.");
-            break;
-        case BR_ERR_X509_FORBIDDEN_KEY_USAGE:
-            t = PSTR("Key Usage extension prohibits intended usage.");
-            break;
-        case BR_ERR_X509_WEAK_PUBLIC_KEY:
-            t = PSTR("Public key found in certificate is too small.");
-            break;
-        case BR_ERR_X509_NOT_TRUSTED:
-            t = PSTR("Chain could not be linked to a trust anchor.");
-            break;
-        default:
-            t = PSTR("Unknown error code.");
-            break;
         }
 
+#if defined(ENABLE_ERROR_STRING)
+        // 2. Determine prefix strings and main error string
+        const char *recv_fatal = "";
+        const char *send_fatal = "";
+
+        // Check the original 'err' for alert flags for the prefix
+        if (err & BR_ERR_RECV_FATAL_ALERT)
+        {
+            recv_fatal = PSTR("SSL received fatal alert - ");
+        }
+        if (err & BR_ERR_SEND_FATAL_ALERT)
+        {
+            send_fatal = PSTR("SSL sent fatal alert - ");
+        }
+
+        const char *t = get_br_error_string(error_code_for_lookup); // Call the new static helper
+
+        // 3. Format output string
         if (dest)
         {
             // snprintf is PSTR safe and guaranteed to 0-terminate
             snprintf(dest, len, "%s%s%s", recv_fatal, send_fatal, t);
         }
 #else
-
         (void)dest;
         (void)len;
-
 #endif
 
-        return err;
+        return err; // Return the full error code including alert flags
     }
 
 #if defined(ENABLE_FS)
@@ -926,7 +792,9 @@ public:
         return true;
     }
 
+#if !defined(__AVR__)
     bool setCiphers(const std::vector<uint16_t> &list) { return setCiphers(&list[0], list.size()); }
+#endif
 
     bool setCiphersLessSecure() { return setCiphers(faster_suites_P, sizeof(faster_suites_P) / sizeof(faster_suites_P[0])); }
 
@@ -945,9 +813,7 @@ public:
 
     bool probeMaxFragmentLength(IPAddress ip, uint16_t port, uint16_t len) { return mProbeMaxFragmentLength(nullptr, ip, port, len); }
 
-    bool probeMaxFragmentLength(const char *hostname, uint16_t port, uint16_t len) { return mProbeMaxFragmentLength(hostname, IPAddress(), port, len); }
-
-    bool probeMaxFragmentLength(const String &host, uint16_t port, uint16_t len) { return BSSL_SSLClient::probeMaxFragmentLength(host.c_str(), port, len); }
+    bool probeMaxFragmentLength(const char *host, uint16_t port, uint16_t len) { return BSSL_SSLClient::probeMaxFragmentLength(host, port, len); }
 
     size_t peekAvailable() EMBED_SSL_ENGINE_BASE_OVERRIDE { return available(); }
 
@@ -961,6 +827,7 @@ public:
         _recvapp_len = 0;
     }
 
+#if !defined(SSLCLIENT_INSECURE_ONLY)
     void setCACert(const char *rootCA)
     {
         mClearAuthenticationSettings();
@@ -1017,6 +884,7 @@ public:
         esp_sslclient_free(&buff);
         return ret;
     }
+#endif
 
     int connect(IPAddress ip, uint16_t port, const char *rootCABuff, const char *cli_cert, const char *cli_key)
     {
@@ -1055,7 +923,7 @@ public:
     {
 
         mClearAuthenticationSettings();
-
+#if !defined(SSLCLIENT_INSECURE_ONLY)
         if (rootCABuff)
         {
             setCertificate(rootCABuff);
@@ -1065,11 +933,147 @@ public:
             setCertificate(cli_cert);
             setPrivateKey(cli_key);
         }
+#endif
     }
 
     void clearAuthenticationSettings() { mClearAuthenticationSettings(); }
 
 private:
+#if defined(ENABLE_ERROR_STRING)
+    /**
+     * @brief Maps the base error code from BearSSL to a human-readable string.
+     * @param err_code The BearSSL error code (without fatal alert flags).
+     * @return const char* pointing to the PROGMEM string.
+     */
+    static const char *get_br_error_string(int err_code)
+    {
+        // This is a private helper, all strings use PSTR for PROGMEM.
+        switch (err_code)
+        {
+        case -1000:
+            return PSTR("Unable to allocate memory for SSL structures and buffers.");
+        case BR_ERR_BAD_PARAM:
+            return PSTR("Caller-provided parameter is incorrect.");
+        case BR_ERR_BAD_STATE:
+            return PSTR("Operation requested by the caller cannot be applied with the current context state.");
+        case BR_ERR_UNSUPPORTED_VERSION:
+            return PSTR("Incoming protocol or record version is unsupported.");
+        case BR_ERR_BAD_VERSION:
+            return PSTR("Incoming record version does not match the expected version.");
+        case BR_ERR_BAD_LENGTH:
+            return PSTR("Incoming record length is invalid.");
+        case BR_ERR_TOO_LARGE:
+            return PSTR("Incoming record is too large or buffer is too small.");
+        case BR_ERR_BAD_MAC:
+            return PSTR("Decryption found an invalid padding, or the record MAC is not correct.");
+        case BR_ERR_NO_RANDOM:
+            return PSTR("No initial entropy was provided.");
+        case BR_ERR_UNKNOWN_TYPE:
+            return PSTR("Incoming record type is unknown.");
+        case BR_ERR_UNEXPECTED:
+            return PSTR("Incoming record or message has wrong type.");
+        case BR_ERR_BAD_CCS:
+            return PSTR("ChangeCipherSpec message from the peer has invalid contents.");
+        case BR_ERR_BAD_ALERT:
+            return PSTR("Alert message from the peer has invalid contents.");
+        case BR_ERR_BAD_HANDSHAKE:
+            return PSTR("Incoming handshake message decoding failed.");
+        case BR_ERR_OVERSIZED_ID:
+            return PSTR("ServerHello contains a session ID larger than 32 bytes.");
+        case BR_ERR_BAD_CIPHER_SUITE:
+            return PSTR("Server wants to use an unsupported cipher suite.");
+        case BR_ERR_BAD_COMPRESSION:
+            return PSTR("Server wants to use an unsupported compression.");
+        case BR_ERR_BAD_FRAGLEN:
+            return PSTR("Server's max fragment length does not match client's.");
+        case BR_ERR_BAD_SECRENEG:
+            return PSTR("Secure renegotiation failed.");
+        case BR_ERR_EXTRA_EXTENSION:
+            return PSTR("Server sent an unexpected or duplicate extension type.");
+        case BR_ERR_BAD_SNI:
+            return PSTR("Invalid Server Name Indication contents.");
+        case BR_ERR_BAD_HELLO_DONE:
+            return PSTR("Invalid ServerHelloDone from the server (length is not 0).");
+        case BR_ERR_LIMIT_EXCEEDED:
+            return PSTR("Internal limit exceeded (e.g. server's public key is too large).");
+        case BR_ERR_BAD_FINISHED:
+            return PSTR("Finished message from peer does not match the expected value.");
+        case BR_ERR_RESUME_MISMATCH:
+            return PSTR("Session resumption attempt with distinct version or cipher suite.");
+        case BR_ERR_INVALID_ALGORITHM:
+            return PSTR("Unsupported or invalid algorithm.");
+        case BR_ERR_BAD_SIGNATURE:
+            return PSTR("Invalid signature in ServerKeyExchange or CertificateVerify message.");
+        case BR_ERR_WRONG_KEY_USAGE:
+            return PSTR("Peer's public key does not have the proper type/usage.");
+        case BR_ERR_NO_CLIENT_AUTH:
+            return PSTR("Client did not send a certificate upon request, or the certificate could not be validated.");
+        case BR_ERR_IO:
+            return PSTR("I/O error or premature close on transport stream.");
+        case BR_ERR_X509_INVALID_VALUE:
+            return PSTR("Invalid value in an ASN.1 structure.");
+        case BR_ERR_X509_TRUNCATED:
+            return PSTR("Truncated certificate or other ASN.1 object.");
+        case BR_ERR_X509_EMPTY_CHAIN:
+            return PSTR("Empty certificate chain (no certificate at all).");
+        case BR_ERR_X509_INNER_TRUNC:
+            return PSTR("Decoding error: inner element extends beyond outer element size.");
+        case BR_ERR_X509_BAD_TAG_CLASS:
+            return PSTR("Decoding error: unsupported tag class.");
+        case BR_ERR_X509_BAD_TAG_VALUE:
+            return PSTR("Decoding error: unsupported tag value.");
+        case BR_ERR_X509_INDEFINITE_LENGTH:
+            return PSTR("Decoding error: indefinite length.");
+        case BR_ERR_X509_EXTRA_ELEMENT:
+            return PSTR("Decoding error: extraneous element.");
+        case BR_ERR_X509_UNEXPECTED:
+            return PSTR("Decoding error: unexpected element.");
+        case BR_ERR_X509_NOT_CONSTRUCTED:
+            return PSTR("Decoding error: expected constructed element, but is primitive.");
+        case BR_ERR_X509_NOT_PRIMITIVE:
+            return PSTR("Decoding error: expected primitive element, but is constructed.");
+        case BR_ERR_X509_PARTIAL_BYTE:
+            return PSTR("Decoding error: BIT STRING length is not multiple of 8.");
+        case BR_ERR_X509_BAD_BOOLEAN:
+            return PSTR("Decoding error: BOOLEAN value has invalid length.");
+        case BR_ERR_X509_OVERFLOW:
+            return PSTR("Decoding error: value is off-limits.");
+        case BR_ERR_X509_BAD_DN:
+            return PSTR("Invalid distinguished name.");
+        case BR_ERR_X509_BAD_TIME:
+            return PSTR("Invalid date/time representation.");
+        case BR_ERR_X509_UNSUPPORTED:
+            return PSTR("Certificate contains unsupported features that cannot be ignored.");
+        case BR_ERR_X509_LIMIT_EXCEEDED:
+            return PSTR("Key or signature size exceeds internal limits.");
+        case BR_ERR_X509_WRONG_KEY_TYPE:
+            return PSTR("Key type does not match that which was expected.");
+        case BR_ERR_X509_BAD_SIGNATURE:
+            return PSTR("Signature is invalid.");
+        case BR_ERR_X509_TIME_UNKNOWN:
+            return PSTR("Validation time is unknown.");
+        case BR_ERR_X509_EXPIRED:
+            return PSTR("Certificate is expired or not yet valid.");
+        case BR_ERR_X509_DN_MISMATCH:
+            return PSTR("Issuer/Subject DN mismatch in the chain.");
+        case BR_ERR_X509_BAD_SERVER_NAME:
+            return PSTR("Expected server name was not found in the chain.");
+        case BR_ERR_X509_CRITICAL_EXTENSION:
+            return PSTR("Unknown critical extension in certificate.");
+        case BR_ERR_X509_NOT_CA:
+            return PSTR("Not a CA, or path length constraint violation.");
+        case BR_ERR_X509_FORBIDDEN_KEY_USAGE:
+            return PSTR("Key Usage extension prohibits intended usage.");
+        case BR_ERR_X509_WEAK_PUBLIC_KEY:
+            return PSTR("Public key found in certificate is too small.");
+        case BR_ERR_X509_NOT_TRUSTED:
+            return PSTR("Chain could not be linked to a trust anchor.");
+        default:
+            return PSTR("Unknown error code.");
+        }
+    }
+#endif
+
     // Checks for support of Maximum Frame Length Negotiation at the given
     // blocksize.  Note that, per spec, only 512, 1024, 2048, and 4096 are
     // supported.  Many servers today do not support this negotiation.
@@ -1084,29 +1088,109 @@ private:
 
         // Hardcoded TLS 1.2 packets used throughout
         static const uint8_t clientHelloHead_P[] PROGMEM = {
-            0x16, 0x03, 0x03, 0x00, 0,                      // TLS header, change last 2 bytes to len
-            0x01, 0x00, 0x00, 0,                            // Last 3 bytes == length
-            0x03, 0x03,                                     // Proto version TLS 1.2
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // Random (gmtime + rand[28])
-            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
-            0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+            0x16,
+            0x03,
+            0x03,
+            0x00,
+            0, // TLS header, change last 2 bytes to len
+            0x01,
+            0x00,
+            0x00,
+            0, // Last 3 bytes == length
+            0x03,
+            0x03, // Proto version TLS 1.2
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08, // Random (gmtime + rand[28])
+            0x11,
+            0x12,
+            0x13,
+            0x14,
+            0x15,
+            0x16,
+            0x17,
+            0x18,
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            0x11,
+            0x12,
+            0x13,
+            0x14,
+            0x15,
+            0x16,
+            0x17,
+            0x18,
             0x00, // Session ID
         };
         // Followed by our cipher-suite, generated on-the-fly
         //    0x00, 0x02, // cipher suite len
         //      0xc0, 0x13, // BR_TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
         static const uint8_t clientHelloTail_P[] PROGMEM = {
-            0x01, 0x00,            // No compression
-            0x00, 26 + 14 + 6 + 5, // Extension length
-            0x00, 0x0d, 0x00, 0x16, 0x00, 0x14, 0x04, 0x03, 0x03, 0x03, 0x05, 0x03,
-            0x06, 0x03, 0x02, 0x03, 0x04, 0x01, 0x03, 0x01, 0x05, 0x01, 0x06,
-            0x01, 0x02, 0x01, // Supported signature algorithms
-            0x00, 0x0a, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x17, 0x00, 0x18, 0x00, 0x19,
-            0x00, 0x1d,                         // Supported groups
-            0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, // Supported EC formats
-            0x00, 0x01,                         // Max Frag Len
-            0x00, 0x01,                         // len of MaxFragLen
+            0x01,
+            0x00, // No compression
+            0x00,
+            26 + 14 + 6 + 5, // Extension length
+            0x00,
+            0x0d,
+            0x00,
+            0x16,
+            0x00,
+            0x14,
+            0x04,
+            0x03,
+            0x03,
+            0x03,
+            0x05,
+            0x03,
+            0x06,
+            0x03,
+            0x02,
+            0x03,
+            0x04,
+            0x01,
+            0x03,
+            0x01,
+            0x05,
+            0x01,
+            0x06,
+            0x01,
+            0x02,
+            0x01, // Supported signature algorithms
+            0x00,
+            0x0a,
+            0x00,
+            0x0a,
+            0x00,
+            0x08,
+            0x00,
+            0x17,
+            0x00,
+            0x18,
+            0x00,
+            0x19,
+            0x00,
+            0x1d, // Supported groups
+            0x00,
+            0x0b,
+            0x00,
+            0x02,
+            0x01,
+            0x00, // Supported EC formats
+            0x00,
+            0x01, // Max Frag Len
+            0x00,
+            0x01, // len of MaxFragLen
         };
         // Followed by a 1-byte MFLN size requesst
         //          0x04 // 2^12 = 4K
@@ -1409,27 +1493,62 @@ private:
         }
 #endif
 
-        _sc = std::make_shared<br_ssl_client_context>();
-        _eng = &_sc->eng; // Allocation/deallocation taken care of by the _sc shared_ptr
+#if defined(STATIC_SSLCLIENT_CONTEXT)
+        br_ssl_client_context *sc_ptr = &_sc;
 
+#else
+        _sc = (br_ssl_client_context *)esp_sslclient_malloc(sizeof(br_ssl_client_context));
+        br_ssl_client_context *sc_ptr = _sc;
+#endif
+
+#if !defined(STATIC_IN_BUFFER_SIZE)
         _iobuf_in = reinterpret_cast<unsigned char *>(esp_sslclient_malloc(_iobuf_in_size));
+#endif
+#if !defined(STATIC_OUT_BUFFER_SIZE)
         _iobuf_out = reinterpret_cast<unsigned char *>(esp_sslclient_malloc(_iobuf_out_size));
+#endif
 
-        if (!_sc || !_iobuf_in || !_iobuf_out)
+#define NEED_OOM_CHECK (!defined(STATIC_IN_BUFFER_SIZE) || !defined(STATIC_OUT_BUFFER_SIZE) || !defined(STATIC_SSLCLIENT_CONTEXT))
+
+#if NEED_OOM_CHECK
+        if (
+#if !defined(STATIC_SSLCLIENT_CONTEXT)
+            !sc_ptr
+
+#if !defined(STATIC_IN_BUFFER_SIZE) || !defined(STATIC_OUT_BUFFER_SIZE)
+            ||
+#endif
+
+#endif
+
+#if !defined(STATIC_IN_BUFFER_SIZE)
+            !_iobuf_in
+#endif
+#if !defined(STATIC_IN_BUFFER_SIZE) && !defined(STATIC_OUT_BUFFER_SIZE)
+            ||
+#endif
+#if !defined(STATIC_OUT_BUFFER_SIZE)
+            !_iobuf_out
+#endif
+        )
         {
-            mFreeSSL(); // Frees _sc, _iobuf*
+            mFreeSSL();
             _oom_err = true;
 #if defined(ENABLE_DEBUG)
             esp_ssl_debug_print(PSTR("OOM error."), _debug_level, esp_ssl_debug_error, __func__);
 #endif
             return 0;
         }
+#undef NEED_OOM_CHECK
+#endif
+
+        _eng = &sc_ptr->eng; // Allocation/deallocation taken care of by the _sc
 
         // If no cipher list yet set, use defaults
         if (!_cipher_list)
-            bssl::br_ssl_client_base_init(_sc.get(), suites_P, sizeof(suites_P) / sizeof(suites_P[0]));
+            bssl::br_ssl_client_base_init(sc_ptr, suites_P, sizeof(suites_P) / sizeof(suites_P[0]));
         else
-            bssl::br_ssl_client_base_init(_sc.get(), _cipher_list, _cipher_cnt);
+            bssl::br_ssl_client_base_init(sc_ptr, _cipher_list, _cipher_cnt);
 
         // Only failure possible in the installation is OOM
         if (!mInstallClientX509Validator())
@@ -1445,16 +1564,17 @@ private:
         br_ssl_engine_set_buffers_bidi(_eng, _iobuf_in, _iobuf_in_size, _iobuf_out, _iobuf_out_size);
         br_ssl_engine_set_versions(_eng, _tls_min, _tls_max);
 
+#if !defined(SSLCLIENT_INSECURE_ONLY)
         // Apply any client certificates, if supplied.
         if (_sk && _sk->isRSA())
         {
-            br_ssl_client_set_single_rsa(_sc.get(), _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
+            br_ssl_client_set_single_rsa(sc_ptr, _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
                                          _sk->getRSA(), br_rsa_pkcs1_sign_get_default());
         }
         else if (_sk && _sk->isEC())
         {
 #ifndef BEARSSL_SSL_BASIC
-            br_ssl_client_set_single_ec(_sc.get(), _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
+            br_ssl_client_set_single_ec(sc_ptr, _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
                                         _sk->getEC(), _allowed_usages,
                                         _cert_issuer_key_type, br_ec_get_default(), br_ecdsa_sign_asn1_get_default());
 #else
@@ -1467,9 +1587,11 @@ private:
         }
         else if (_esp32_sk && _esp32_chain)
         {
-            br_ssl_client_set_single_rsa(_sc.get(), _esp32_chain->getX509Certs(), _esp32_chain->getCount(),
+            br_ssl_client_set_single_rsa(sc_ptr, _esp32_chain->getX509Certs(), _esp32_chain->getCount(),
                                          _esp32_sk->getRSA(), br_rsa_pkcs1_sign_get_default());
         }
+
+#endif
 
         // clear the write error
         setWriteError(esp_ssl_ok);
@@ -1492,7 +1614,7 @@ private:
             br_ssl_engine_set_session_parameters(_eng, _session->getSession());
         }
 
-        if (!br_ssl_client_reset(_sc.get(), host, _session ? 1 : 0))
+        if (!br_ssl_client_reset(sc_ptr, host, _session ? 1 : 0))
         {
 #if defined(ENABLE_DEBUG)
             esp_ssl_debug_print(PSTR("Can't reset client."), _debug_level, esp_ssl_debug_error, __func__);
@@ -1530,12 +1652,60 @@ private:
         if (_session)
             br_ssl_engine_get_session_parameters(_eng, _session->getSession());
 
-        // Session is already validated here, there is no need to keep following
-        _x509_minimal = nullptr;
-        _x509_insecure = nullptr;
-        _x509_knownkey = nullptr;
+// Session is already validated here, there is no need to keep following
+#if !defined(STATIC_X509_CONTEXT)
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_x509_minimal)
+            esp_sslclient_free((uint8_t **)&_x509_minimal);
+        if (_x509_knownkey)
+            esp_sslclient_free((uint8_t **)&_x509_knownkey);
+#endif
+
+        if (_x509_insecure)
+            esp_sslclient_free((uint8_t **)&_x509_insecure);
+
+#endif
 
         return 1;
+    }
+
+    static char custom_toupper(char c)
+    {
+        if (c >= 'a' && c <= 'z')
+        {
+            return c - ('a' - 'A');
+        }
+        return c;
+    }
+
+    int strcasecmp_custom(const char *s1, const char *s2)
+    {
+        const unsigned char *p1 = (const unsigned char *)s1;
+        const unsigned char *p2 = (const unsigned char *)s2;
+        unsigned char c1, c2;
+
+        do
+        {
+            // 1. Convert characters to their uppercase equivalent
+            c1 = custom_toupper(*p1++);
+            c2 = custom_toupper(*p2++);
+
+            // 2. If the characters differ, return the difference.
+            if (c1 != c2)
+            {
+                return (int)c1 - (int)c2;
+            }
+
+            // 3. Stop if the null terminator is reached (meaning both strings match up to this point)
+            if (c1 == '\0')
+            {
+                break;
+            }
+
+        } while (true);
+
+        return 0; // Strings are identical (case-insensitive)
     }
 
     bool mConnectionValidate(const char *host, IPAddress ip, uint16_t port)
@@ -1545,7 +1715,7 @@ private:
 
         if (_basic_client && _basic_client->connected() &&
                     host
-                ? (strcasecmp(host, _host.c_str()) != 0 || port != _port)
+                ? (strcasecmp_custom(host, _host) != 0 || port != _port)
                 : (ip != _ip || port != _port))
         {
             _basic_client->stop();
@@ -1579,7 +1749,7 @@ private:
                     if (_connect_with_ip)
                         ret = connect(_ip, _port);
                     else
-                        ret = connect(_host.c_str(), _port);
+                        ret = connect(_host, _port);
                 }
                 else
                 {
@@ -1587,7 +1757,7 @@ private:
                     if (_connect_with_ip)
                         ret = connectSSL(_ip, _port);
                     else
-                        ret = connectSSL(_host.c_str(), _port);
+                        ret = connectSSL(_host, _port);
                 }
 
                 if (!ret)
@@ -1649,9 +1819,9 @@ private:
                 {
                     lastLen = len;
 #if defined(ENABLE_DEBUG)
-                    String s = PSTR("Expected bytes count: ");
-                    s += len;
-                    esp_ssl_debug_print(s.c_str(), _debug_level, esp_ssl_debug_info, __func__);
+                    char s_buffer[64];
+                    snprintf_P(s_buffer, sizeof(s_buffer), PSTR("Expected bytes count: %u"), (unsigned int)len);
+                    esp_ssl_debug_print(s_buffer, _debug_level, esp_ssl_debug_info, __func__);
 #endif
                 }
             }
@@ -1838,9 +2008,9 @@ private:
                     if (rlen <= 0)
                     {
 #if defined(ENABLE_DEBUG)
-                        String s = PSTR("Error reading bytes from basic client. Write Error: ");
-                        s += _basic_client->getWriteError();
-                        esp_ssl_debug_print(s.c_str(), _debug_level, esp_ssl_debug_error, __func__);
+                        char s_buffer[64];
+                        snprintf_P(s_buffer, sizeof(s_buffer), PSTR("Error reading bytes from basic client. Write Error: %u"), (unsigned int)_basic_client->getWriteError());
+                        esp_ssl_debug_print(s_buffer, _debug_level, esp_ssl_debug_error, __func__);
 #endif
                         setWriteError(esp_ssl_write_error);
                         stop();
@@ -1934,6 +2104,7 @@ private:
 
 #endif
 
+#if !defined(__AVR__)
     bool mIsSecurePort(uint16_t port)
     {
         int size = 26;
@@ -1945,7 +2116,7 @@ private:
 
         return false;
     }
-
+#endif
     void mBSSLX509InsecureInit(bssl::br_x509_insecure_context *ctx, int _use_fingerprint, const uint8_t _fingerprint[20], int _allow_self_signed)
     {
         static const br_x509_class br_x509_insecure_vtable PROGMEM = {
@@ -1969,6 +2140,8 @@ private:
         _use_insecure = false;
         _use_fingerprint = false;
         _use_self_signed = false;
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
         _knownkey = nullptr;
         _ta = nullptr;
 
@@ -1983,12 +2156,12 @@ private:
             delete _esp32_chain;
             _esp32_chain = nullptr;
         }
-
         if (_esp32_sk)
         {
             delete _esp32_sk;
             _esp32_sk = nullptr;
         }
+#endif
 
         esp_sslclient_free(&_cipher_list);
         _cipher_cnt = 0;
@@ -1997,17 +2170,44 @@ private:
     void mClear()
     {
         _timeout_ms = 15000;
-        _sc = nullptr;
-        _eng = nullptr;
-        _x509_minimal = nullptr;
-        _x509_insecure = nullptr;
-        _x509_knownkey = nullptr;
+#if !defined(STATIC_SSLCLIENT_CONTEXT)
+        if (_sc)
+            esp_sslclient_free((br_ssl_client_context **)&_sc);
+#endif
+        _eng = nullptr; // Alias pointer, clear only
 
-        esp_sslclient_free(&_iobuf_in);
-        esp_sslclient_free(&_iobuf_out);
-        _now = 0; // You can override or ensure time() is correct w/configTime
+#if !defined(STATIC_X509_CONTEXT)
+        // Check and free dynamically allocated X509 contexts
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_x509_minimal)
+            esp_sslclient_free((uint8_t **)&_x509_minimal);
+
+        if (_x509_knownkey)
+            esp_sslclient_free((uint8_t **)&_x509_knownkey);
+#endif
+
+        if (_x509_insecure)
+            esp_sslclient_free((uint8_t **)&_x509_insecure);
+
+#endif
+
+#if !defined(STATIC_IN_BUFFER_SIZE)
+        // Check and free dynamically allocated input buffer
+        if (_iobuf_in)
+            esp_sslclient_free((unsigned char **)&_iobuf_in);
+#endif
+#if !defined(STATIC_OUT_BUFFER_SIZE)
+        // Check and free dynamically allocated output buffer
+        if (_iobuf_out)
+            esp_sslclient_free((unsigned char **)&_iobuf_out);
+#endif
+
+        _now = 0;
+#if !defined(SSLCLIENT_INSECURE_ONLY)
         _ta = nullptr;
-        setBufferSizes(16384, 512); // Minimum safe
+#endif
+        setBufferSizes(16384, 512);
         _secure = false;
         _recvapp_buf = nullptr;
         _recvapp_len = 0;
@@ -2019,11 +2219,11 @@ private:
 
     bool mInstallClientX509Validator()
     {
-
         if (_use_insecure || _use_fingerprint || _use_self_signed)
         {
+#if !defined(STATIC_X509_CONTEXT)
             // Use common insecure x509 authenticator
-            _x509_insecure = std::make_shared<struct bssl::br_x509_insecure_context>();
+            _x509_insecure = (bssl::br_x509_insecure_context *)esp_sslclient_malloc(sizeof(bssl::br_x509_insecure_context));
             if (!_x509_insecure)
             {
 #if defined(ENABLE_DEBUG)
@@ -2031,13 +2231,29 @@ private:
 #endif
                 return false;
             }
-            mBSSLX509InsecureInit(_x509_insecure.get(), _use_fingerprint, _fingerprint, _use_self_signed);
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+            mBSSLX509InsecureInit(_x509_insecure, _use_fingerprint, _fingerprint, _use_self_signed);
+#else
+            mBSSLX509InsecureInit(_x509_insecure, _use_fingerprint, nullptr, _use_self_signed);
+#endif
             br_ssl_engine_set_x509(_eng, &_x509_insecure->vtable);
+#else // STATIC_X509_CONTEXT
+      // Use common insecure x509 authenticator
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+            mBSSLX509InsecureInit(&_x509_insecure, _use_fingerprint, _fingerprint, _use_self_signed);
+#else
+            mBSSLX509InsecureInit(&_x509_insecure, _use_fingerprint, nullptr, _use_self_signed);
+#endif
+            br_ssl_engine_set_x509(_eng, &_x509_insecure.vtable);
+#endif // STATIC_X509_CONTEXT
         }
+#if !defined(SSLCLIENT_INSECURE_ONLY)
         else if (_knownkey)
         {
+
+#if !defined(STATIC_X509_CONTEXT)
             // Simple, pre-known public key authenticator, ignores cert completely.
-            _x509_knownkey = std::make_shared<br_x509_knownkey_context>();
+            _x509_knownkey = (br_x509_knownkey_context *)esp_sslclient_malloc(sizeof(br_x509_knownkey_context));
             if (!_x509_knownkey)
             {
 #if defined(ENABLE_DEBUG)
@@ -2047,12 +2263,12 @@ private:
             }
             if (_knownkey->isRSA())
             {
-                br_x509_knownkey_init_rsa(_x509_knownkey.get(), _knownkey->getRSA(), _knownkey_usages);
+                br_x509_knownkey_init_rsa(_x509_knownkey, _knownkey->getRSA(), _knownkey_usages);
             }
             else if (_knownkey->isEC())
             {
 #ifndef BEARSSL_SSL_BASIC
-                br_x509_knownkey_init_ec(_x509_knownkey.get(), _knownkey->getEC(), _knownkey_usages);
+                br_x509_knownkey_init_ec(_x509_knownkey, _knownkey->getEC(), _knownkey_usages);
 #else
                 (void)_knownkey;
                 (void)_knownkey_usages;
@@ -2061,11 +2277,35 @@ private:
 #endif
             }
             br_ssl_engine_set_x509(_eng, &_x509_knownkey->vtable);
+
+#else // STATIC_X509_CONTEXT
+
+            // Simple, pre-known public key authenticator, ignores cert completely.
+            if (_knownkey->isRSA())
+            {
+                br_x509_knownkey_init_rsa(&_x509_knownkey, _knownkey->getRSA(), _knownkey_usages);
+            }
+            else if (_knownkey->isEC())
+            {
+#ifndef BEARSSL_SSL_BASIC
+                br_x509_knownkey_init_ec(&_x509_knownkey, _knownkey->getEC(), _knownkey_usages);
+#else
+                (void)_knownkey;
+                (void)_knownkey_usages;
+                esp_ssl_debug_print(PSTR("Attempting to use EC keys in minimal cipher mode (no EC)"), _debug_level, esp_ssl_debug_error, __func__);
+                return false;
+#endif
+            }
+            br_ssl_engine_set_x509(_eng, &_x509_knownkey.vtable);
+
+#endif // STATIC_X509_CONTEXT
         }
         else
         {
+#if !defined(STATIC_X509_CONTEXT)
             // X509 minimal validator.  Checks dates, cert chain for trusted CA, etc.
-            _x509_minimal = std::make_shared<br_x509_minimal_context>();
+            _x509_minimal = (br_x509_minimal_context *)esp_sslclient_malloc(sizeof(br_x509_minimal_context));
+
             if (!_x509_minimal)
             {
 #if defined(ENABLE_DEBUG)
@@ -2075,17 +2315,17 @@ private:
             }
             if (_esp32_ta)
             {
-                br_x509_minimal_init(_x509_minimal.get(), &br_sha256_vtable, _esp32_ta->getTrustAnchors(), _esp32_ta->getCount());
+                br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _esp32_ta->getTrustAnchors(), _esp32_ta->getCount());
             }
             else
             {
-                br_x509_minimal_init(_x509_minimal.get(), &br_sha256_vtable, _ta ? _ta->getTrustAnchors() : nullptr, _ta ? _ta->getCount() : 0);
+                br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _ta ? _ta->getTrustAnchors() : nullptr, _ta ? _ta->getCount() : 0);
             }
-            br_x509_minimal_set_rsa(_x509_minimal.get(), br_ssl_engine_get_rsavrfy(_eng));
+            br_x509_minimal_set_rsa(_x509_minimal, br_ssl_engine_get_rsavrfy(_eng));
 #ifndef BEARSSL_SSL_BASIC
-            br_x509_minimal_set_ecdsa(_x509_minimal.get(), br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
+            br_x509_minimal_set_ecdsa(_x509_minimal, br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
 #endif
-            bssl::br_x509_minimal_install_hashes(_x509_minimal.get());
+            bssl::br_x509_minimal_install_hashes(_x509_minimal);
 
 #if (defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
             if (_now < ESP_SSLCLIENT_VALID_TIMESTAMP)
@@ -2094,7 +2334,41 @@ private:
             if (_now)
             {
                 // Magic constants convert to x509 times
-                br_x509_minimal_set_time(_x509_minimal.get(), ((uint32_t)_now) / 86400 + 719528, ((uint32_t)_now) % 86400);
+                br_x509_minimal_set_time(_x509_minimal, ((uint32_t)_now) / 86400 + 719528, ((uint32_t)_now) % 86400);
+            }
+#if defined(ENABLE_FS)
+            if (_certStore)
+            {
+                _certStore->installCertStore(_x509_minimal);
+            }
+#endif
+            br_ssl_engine_set_x509(_eng, &_x509_minimal->vtable);
+
+#else // STATIC_X509_CONTEXT
+
+            // X509 minimal validator.  Checks dates, cert chain for trusted CA, etc.
+            if (_esp32_ta)
+            {
+                br_x509_minimal_init(&_x509_minimal, &br_sha256_vtable, _esp32_ta->getTrustAnchors(), _esp32_ta->getCount());
+            }
+            else
+            {
+                br_x509_minimal_init(&_x509_minimal, &br_sha256_vtable, _ta ? _ta->getTrustAnchors() : nullptr, _ta ? _ta->getCount() : 0);
+            }
+            br_x509_minimal_set_rsa(&_x509_minimal, br_ssl_engine_get_rsavrfy(_eng));
+#ifndef BEARSSL_SSL_BASIC
+            br_x509_minimal_set_ecdsa(&_x509_minimal, br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
+#endif
+            bssl::br_x509_minimal_install_hashes(&_x509_minimal);
+
+#if (defined(ESP32) || defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
+            if (_now < ESP_SSLCLIENT_VALID_TIMESTAMP)
+                _now = time(nullptr);
+#endif
+            if (_now)
+            {
+                // Magic constants convert to x509 times
+                br_x509_minimal_set_time(&_x509_minimal, ((uint32_t)_now) / 86400 + 719528, ((uint32_t)_now) % 86400);
             }
 #if defined(ENABLE_FS)
             if (_certStore)
@@ -2102,23 +2376,53 @@ private:
                 _certStore->installCertStore(_x509_minimal.get());
             }
 #endif
-            br_ssl_engine_set_x509(_eng, &_x509_minimal->vtable);
+            br_ssl_engine_set_x509(_eng, &_x509_minimal.vtable);
+#endif // STATIC_X509_CONTEXT
         }
+#endif // SSLCLIENT_INSECURE_ONLY
         return true;
     }
 
     void mFreeSSL()
     {
-        // These are smart pointers and will free if refcnt==0
-        _sc = nullptr;
-        _x509_minimal = nullptr;
-        _x509_insecure = nullptr;
-        _x509_knownkey = nullptr;
-        esp_sslclient_free(&_iobuf_in);
-        esp_sslclient_free(&_iobuf_out);
+#if !defined(STATIC_SSLCLIENT_CONTEXT)
+        if (_sc)
+            esp_sslclient_free((br_ssl_client_context **)&_sc);
+#endif
+        // _eng is an alias, so it is handled by the overall memory sweep.
+
+#if !defined(STATIC_X509_CONTEXT)
+
+        // Check and free dynamically allocated X509 contexts
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_x509_minimal)
+            esp_sslclient_free((uint8_t **)&_x509_minimal);
+
+        if (_x509_knownkey)
+            esp_sslclient_free((uint8_t **)&_x509_knownkey);
+#endif
+
+        if (_x509_insecure)
+            esp_sslclient_free((uint8_t **)&_x509_insecure);
+
+#endif
+
+#if !defined(STATIC_IN_BUFFER_SIZE)
+        // Check and free dynamically allocated input buffer
+        if (_iobuf_in)
+            esp_sslclient_free((unsigned char **)&_iobuf_in);
+#endif
+#if !defined(STATIC_OUT_BUFFER_SIZE)
+        // Check and free dynamically allocated output buffer
+        if (_iobuf_out)
+            esp_sslclient_free((unsigned char **)&_iobuf_out);
+#endif
+
         // Reset non-allocated ptrs (pointing to bits potentially free'd above)
         _recvapp_buf = nullptr;
         _recvapp_len = 0;
+
         // This connection is toast
         _handshake_done = false;
         _timeout_ms = 15000;
@@ -2126,6 +2430,7 @@ private:
         _is_connected = false;
     }
 
+#if !defined(__AVR__)
     uint8_t *mStreamLoad(Stream &stream, size_t size)
     {
         uint8_t *dest = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(size + 1));
@@ -2141,6 +2446,7 @@ private:
         dest[size] = '\0';
         return dest;
     }
+#endif
 
     // store whether to enable debug logging
     int _debug_level = 0;
@@ -2159,25 +2465,74 @@ private:
 
     Client *_basic_client = nullptr;
 
-    std::shared_ptr<br_ssl_client_context> _sc;
-    br_ssl_engine_context *_eng = nullptr; // &_sc->eng, to allow for client or server contexts
-    std::shared_ptr<br_x509_minimal_context> _x509_minimal;
-    std::shared_ptr<struct bssl::br_x509_insecure_context> _x509_insecure;
-    std::shared_ptr<br_x509_knownkey_context> _x509_knownkey;
+#if defined(STATIC_SSLCLIENT_CONTEXT)
+    br_ssl_client_context _sc;
+#else
+    br_ssl_client_context *_sc = nullptr;
+#endif
 
+    br_ssl_engine_context *_eng = nullptr; // &_sc->eng, to allow for client or server contexts
+
+#if defined(SSLCLIENT_INSECURE_ONLY)
+
+#if defined(STATIC_X509_CONTEXT)
+    bssl::br_x509_insecure_context _x509_insecure;
+#else
+    bssl::br_x509_insecure_context *_x509_insecure = nullptr;
+#endif
+
+#else
+
+#if defined(STATIC_X509_CONTEXT)
+    br_x509_minimal_context _x509_minimal;
+    bssl::br_x509_insecure_context _x509_insecure;
+    br_x509_knownkey_context _x509_knownkey;
+#else
+    br_x509_minimal_context *_x509_minimal = nullptr;
+    bssl::br_x509_insecure_context *_x509_insecure = nullptr;
+    br_x509_knownkey_context *_x509_knownkey = nullptr;
+#endif
+
+#endif
+
+#if defined(STATIC_IN_BUFFER_SIZE)
+
+#if STATIC_IN_BUFFER_SIZE < 512
+#undef STATIC_IN_BUFFER_SIZE
+#define STATIC_IN_BUFFER_SIZE 512
+#endif
+    unsigned char _iobuf_in[STATIC_IN_BUFFER_SIZE];
+#else
     unsigned char *_iobuf_in = nullptr;
+#endif
+
+#if defined(STATIC_OUT_BUFFER_SIZE)
+
+#if STATIC_OUT_BUFFER_SIZE < 512
+#undef STATIC_OUT_BUFFER_SIZE
+#define STATIC_OUT_BUFFER_SIZE 512
+#endif
+
+    unsigned char _iobuf_out[STATIC_OUT_BUFFER_SIZE];
+#else
     unsigned char *_iobuf_out = nullptr;
+#endif
+
     int _iobuf_in_size = 512;
     int _iobuf_out_size = 512;
 
-    time_t _now = 0;
-    const X509List *_ta = nullptr;
+    uint32_t _now = 0;
+
 #if defined(ENABLE_FS)
     CertStoreBase *_certStore = 0;
 #endif
+
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+    const X509List *_ta = nullptr;
     // Optional client certificate
     const X509List *_chain = nullptr;
     const PrivateKey *_sk = nullptr;
+#endif
     unsigned int _allowed_usages = 0;
     unsigned int _cert_issuer_key_type = 0;
 
@@ -2187,9 +2542,12 @@ private:
 
     bool _use_insecure = false;
     bool _use_fingerprint = false;
-    uint8_t _fingerprint[20];
+
     bool _use_self_signed = false;
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+    uint8_t _fingerprint[20];
     const PublicKey *_knownkey;
+#endif
     unsigned int _knownkey_usages = 0;
 
     // Custom cipher list pointer or nullptr if default
@@ -2200,9 +2558,11 @@ private:
     uint32_t _tls_min = BR_TLS10;
     uint32_t _tls_max = BR_TLS12;
 
+#if !defined(SSLCLIENT_INSECURE_ONLY)
     X509List *_esp32_ta = nullptr;
     X509List *_esp32_chain = nullptr;
     PrivateKey *_esp32_sk = nullptr;
+#endif
 
     bool _handshake_done = false;
     bool _oom_err = false;
@@ -2214,7 +2574,7 @@ private:
     unsigned long _tcp_session_timeout = 0;
     unsigned long _session_ts = 0;
     bool _isSSLEnabled = false;
-    String _host;
+    char _host[64];
     uint16_t _port = 0;
     IPAddress _ip;
     bool _connect_with_ip = false;

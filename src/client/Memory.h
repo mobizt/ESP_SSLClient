@@ -22,19 +22,19 @@ static void *esp_sslclient_malloc(size_t len)
     void *p = NULL;
     size_t newLen = esp_sslclient_get_reserve_len(len);
 
-#if defined(BOARD_HAS_PSRAM)
+#if defined(BOARD_HAS_PSRAM) && defined(ENABLE_PSRAM)
     if (ESP.getPsramSize() > 0)
         p = reinterpret_cast<void *>(ps_malloc(newLen));
     else
         p = reinterpret_cast<void *>(malloc(newLen));
 #else
 
-#if defined(ESP8266_USE_EXTERNAL_HEAP)
+#if defined(ESP8266_USE_EXTERNAL_HEAP) && defined(ENABLE_PSRAM)
     ESP.setExternalHeap();
 #endif
 
     p = reinterpret_cast<void *>(malloc(newLen));
-#if defined(ESP8266_USE_EXTERNAL_HEAP)
+#if defined(ESP8266_USE_EXTERNAL_HEAP) && defined(ENABLE_PSRAM)
     ESP.resetHeap();
 #endif
 
@@ -55,20 +55,20 @@ static void esp_sslclient_free(void *ptr)
 static void *esp_sslclient_realloc(void *ptr, size_t sz)
 {
     size_t newLen = esp_sslclient_get_reserve_len(sz);
-#if defined(BOARD_HAS_PSRAM)
+#if defined(BOARD_HAS_PSRAM) && defined(ENABLE_PSRAM)
     if (ESP.getPsramSize() > 0)
         ptr = reinterpret_cast<void *>(ps_realloc(ptr, newLen));
     else
         ptr = reinterpret_cast<void *>(realloc(ptr, newLen));
 #else
 
-#if defined(ESP8266_USE_EXTERNAL_HEAP)
+#if defined(ESP8266_USE_EXTERNAL_HEAP) && defined(ENABLE_PSRAM)
     ESP.setExternalHeap();
 #endif
 
     ptr = reinterpret_cast<void *>(realloc(ptr, newLen));
 
-#if defined(ESP8266_USE_EXTERNAL_HEAP)
+#if defined(ESP8266_USE_EXTERNAL_HEAP) && defined(ENABLE_PSRAM)
     ESP.resetHeap();
 #endif
 

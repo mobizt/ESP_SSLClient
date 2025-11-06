@@ -8,6 +8,7 @@
 #define ESP_SSLCLIENT_H
 
 
+
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wvla"
@@ -16,22 +17,18 @@
 #include <Client.h>
 
 #if (defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
-#define USE_EMBED_SSL_ENGINE
+#define BSSL_BUILD_PLATFORM_CORE
 #else
-#define USE_LIB_SSL_ENGINE
+#define BSSL_BUILD_INTERNAL_CORE
 #endif
 
-#if defined(__AVR__)
-#undef USE_LIB_SSL_ENGINE
-#undef USE_EMBED_SSL_ENGINE
-#error "Not support AVR architecture"
-#endif
 
-#include <memory>
+
+#if !defined(__AVR__)
 #include <vector>
+#endif
 
-
-#if defined(USE_EMBED_SSL_ENGINE) && !defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
+#if defined(BSSL_BUILD_PLATFORM_CORE) && !defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE override
 #else
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE
@@ -59,7 +56,7 @@
 #define ESP_SSLCLIENT_DEBUG_PRINT(...)
 #endif
 
-#if defined(USE_EMBED_SSL_ENGINE) || defined(USE_LIB_SSL_ENGINE)
+#if defined(BSSL_BUILD_PLATFORM_CORE) || defined(BSSL_BUILD_INTERNAL_CORE)
 
 enum esp_ssl_client_debug_level
 {
@@ -156,7 +153,9 @@ static bool send_abort(Client *probe, bool supportsLen)
     return supportsLen;
 }
 
+#if !defined(__AVR__)
 const uint16_t _secure_ports[26] = {443 /* HTTPS */, 465 /* SMTP */, 563 /* NNTP */, 636 /* LDAPS */, 695 /* IEEE-MMS-SSL */, 832 /* NETCONF */, 853 /* DNS */, 989 /* FTPS */, 990 /* FTPS */, 992 /* Telnet */, 993 /* IMAP */, 995 /* POP3 */, 4116 /* Smartcard */, 4843 /* OPC */, 5061 /* SIP */, 5085 /* LLIP */, 5349 /* NAT */, 5671 /* AMQP */, 5986 /* WinRM-HTTPS */, 6513 /* NETCONF */, 6514 /* Syslog */, 6515 /* Elipse RPC */, 6619 /* OFTP */, 8243 /* Apache Synapse */, 8403 /* GxFWD */, 8883 /* MQTT */};
+#endif
 
 #endif
 
