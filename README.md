@@ -83,7 +83,7 @@ For PlatformIO:
 
 
 
-```bash
+```ini
 
 [env:rpipicow]  
 
