@@ -470,7 +470,13 @@ public:
         if (!_basic_client->connected() && !mConnectBasicClient(host, IPAddress(), port))
             return 0;
 
-        strcpy(_host, host);
+        if (host != _host)
+        {
+            // Only copy if the pointers are different
+            strncpy(_host, host, sizeof(_host) - 1);
+            _host[sizeof(_host) - 1] = '\0';
+        }
+
         _port = port;
         _connect_with_ip = false;
 
@@ -1087,7 +1093,7 @@ private:
     {
 
         // Hardcoded TLS 1.2 packets used throughout
-        static const uint8_t clientHelloHead_P[] PROGMEM = {
+        static const uint8_t clientHelloHead_P[] CONST_IN_FLASH = {
             0x16,
             0x03,
             0x03,
@@ -1136,7 +1142,7 @@ private:
         // Followed by our cipher-suite, generated on-the-fly
         //    0x00, 0x02, // cipher suite len
         //      0xc0, 0x13, // BR_TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-        static const uint8_t clientHelloTail_P[] PROGMEM = {
+        static const uint8_t clientHelloTail_P[] CONST_IN_FLASH = {
             0x01,
             0x00, // No compression
             0x00,
@@ -2119,7 +2125,7 @@ private:
 #endif
     void mBSSLX509InsecureInit(bssl::br_x509_insecure_context *ctx, int _use_fingerprint, const uint8_t _fingerprint[20], int _allow_self_signed)
     {
-        static const br_x509_class br_x509_insecure_vtable PROGMEM = {
+        static const br_x509_class br_x509_insecure_vtable CONST_IN_FLASH = {
             sizeof(bssl::br_x509_insecure_context),
             bssl::insecure_start_chain,
             bssl::insecure_start_cert,

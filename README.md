@@ -1,345 +1,258 @@
-# ESP_SSLClient
+# 🛡️ ESP_SSLClient: Universal BearSSL/TLS Client for Arduino
 
-![Compile](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_library.yml/badge.svg) ![Examples](https://github.com/mobizt/ESP_SSLClient/actions/workflows/compile_examples.yml/badge.svg)  [![Github Stars](https://img.shields.io/github/stars/mobizt/ESP_SSLClient?logo=github)](https://github.com/mobizt/ESP_SSLClient/stargazers) ![Github Issues](https://img.shields.io/github/issues/mobizt/ESP_SSLClient?logo=github)
+**A flexible and secure SSL/TLS client library for Arduino, enabling encrypted communication (HTTPS, SMTPS, etc.) on virtually *any* board or external network interface (Ethernet, GSM, WiFiClient, etc.).**
 
-![arduino-library-badge](https://www.ardu-badge.com/badge/ESP_SSLClient.svg) ![PlatformIO](https://badges.registry.platformio.org/packages/mobizt/library/ESP_SSLClient.svg)
+Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRAM). Compatible with WiFiClient, EthernetClient, GSMClient, and ESP-Mail-Client.
 
-The upgradable SSL Client for ESP8266, ESP32, Raspberry Pi Pico (RP2040) and other Arduino devices (except for avr) that supports external networking interfaces e.g., WiFiClient, EthernetClient, and GSMClient.
+---
 
-This library provided the Secure Layer Networking (SSL/TLS) TCP Client.
+![Arduino Library](https://img.shields.io/badge/Arduino-Library-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Platform](https://img.shields.io/badge/Platform-ESP32%2C%20AVR%2C%20RP2040%2C%20STM32-green)
+![BearSSL](https://img.shields.io/badge/SSL-BearSSL-lightgrey)
 
-The Arduino Client library buffer size should be large enough (1k or more) for transporting SSL data.
+---
 
-The RP2040 boards required Arduino-Pico SDK from Earle F. Philhower https://github.com/earlephilhower/arduino-pico
+## 🔧 Features
 
-This library used light weight SSL engine library BearSSL for secure data encryption and decryption.
+- 🛡️ **Secure Data:** Data encryption via BearSSL (native or bundled)
+- 🔄 **TLS Upgrade:** Support for protocol negotiation (e.g., STARTTLS)
+- 🔐 **Validation:** Full Certificate validation or quick testing via `setInsecure()` mode
+- 🔁 **Runtime Flexibility:** Client switching at runtime via pointer assignment
+- 📦 **Configurable Buffers:** Adjust RX/TX buffer sizes (512–16384 bytes)
+- 🧪 **Debugging:** Multiple debugging levels and detailed error string support
+- 📁 **CertStore:** Root Certificate management via filesystem APIs
+- 🧩 **Integration:** Seamless integration with ESP-Mail-Client
+- 🧠 **Memory Management:** Static and dynamic memory allocation support
 
-In ESP8266 device, the native BearSSL in Core SDK will be used and built-in BearSSL library will be used for other Arduino devices.
+---
 
-This library is fully compatible and able to work with [ESP-Mail-Client](https://github.com/mobizt/ESP-Mail-Client) library seamlessly.
+## 📦 Supported Platforms
 
+### Arduino Boards (Flash > 128KB)
 
-### Supposted Arduino Devices with flash size > 128k.
+- **ESP32, ESP8266**
+- **Raspberry Pi Pico / RP2040**
+- **Arduino Nano RP2040 Connect**
+- **STM32, SAMD, Teensy 3.1–4.1**
+- **Arduino UNO R4 WiFi (Renesas)**
+- **AVR boards** (e.g., Arduino Mega 2560 with external SRAM)
 
- * ESP32
- * ESP8266
- * Arduino SAMD
- * Arduino STM32
- * Teensy 3.1 to 4.1
- * Arduino Nano RP2040 Connect
- * Raspberry Pi Pico
- * Arduino UNO R4 WiFi (Renesas).
- * Arduino Mega 2560 with external SRAM.
+### Networking Interfaces
 
- The minimum RAM requires is approx. 9.8k bytes while the program space usage is 178 k bytes in Arduino Mega 2560 with external SRAM when uses in insecure mode.
- 
- ### Supposted all networking devices with Client (with driver) library.
+- **WIZnet W5100 / W5500 / Wxxx** series (Ethernet)
+- **ENC28J60** (via lwIP)
+- **GSM modules**
+- **Standard WiFi modules**
 
- * WIZnet Wxxx series modules
- * All SPI Ethernet modules
- * All GSM modules
- * All WiFi modules
+> ⚠️ **Note on Native Ethernet:** Native PHY Ethernet chips (LAN8720, TLK101, etc.) are supported by ESP32 Core via `WiFiClientSecure` and `ETH.h`. This library is generally **not required** in those specific cases.
 
+---
 
-Some PHY and MAC ethernet chips are already supported by Core `WiFiClientSecure` and ethernet libraries which this `ESP_SSLClient` library is not needed.
-
-The following PHY ethernet chips i.e. LAN8720, TLK101, RTL8201, DP83848, DM9051, KSZ8041 and KSZ8081 were supported by ESP32 Arduino Core natively then this and can be used with `WiFiClientSecure.h` and `ETH.h` libraries as normally.
-
-
-The SPI Ethernet module that uses WIZNet W5100, W5500 and ENC28J60 are supported by ESP8266 Arduino Core natively and can be used with `WiFiClientSecure.h` and `ENC28J60lwIP.h` or `W5100lwIP.h` or `W5500lwIP.h` libraries as normally.
-
- 
-## Features
-
-* **Uses BearSSL SSL engine for cryptography.**
-
-* **Supports all Arduino devices with enough program flash space (128k or more).**
-
-* **Onnly SSL Client library that supports TLS upgrades.**
-
-* **Use Client pointer without copy to constructor then it can be changed seemlessly at run time.**
-
-* **The receive and transmit buffer memory can be reserved as supported by BearSSL.**
-
-* **Easy to use as it provides the same interface functions as in ESP8266's WiFiClientSecure.**
-
-* **Supports the authentications as in WiFiClientSecure.**
-
-* **Supports external PSRAM in ESP32, ESP8266 and some AVR devices.**
-
-* **Memmery buffer and SSL context can be defined as static and dynamic.**
+## 🚀 Getting Started
 
 
 
-
-## Basic Usage
-```cpp
-  #include <Arduino.h>
-  #if defined(ESP32) || defined(ARDUINO_RASPBERRY_PI_PICO_W)
-  #include <WiFi.h>
-  #elif defined(ESP8266)
-  #include <ESP8266WiFi.h>
-  #elif __has_include(<WiFiNINA.h>)
-  #include <WiFiNINA.h>
-  #elif __has_include(<WiFi101.h>)
-  #include <WiFi101.h>
-  #elif __has_include(<WiFiS3.h>)
-  #include <WiFiS3.h>
-  #endif
-
-  #define ENABLE_DEBUG // To enable debugging
-  #define ENABLE_ERROR_STRING // To show details in error
-  #define DEBUG_PORT Serial // To define the serial port for debug printing
-
-  // When use in insecure mode (no certificate and fingerprint verification).
-  // This can save memory and program space usage.
-  #define SSLCLIENT_INSECURE_ONLY
-
-  // When pre-memory allocation are prefered (stack memory used).
-  // Don't define when dynamic memory allocation is prefered (heap or PSRAM memory used).
-  #define STATIC_IN_BUFFER_SIZE 2048
-  #define STATIC_OUT_BUFFER_SIZE 1024
-  #define STATIC_X509_CONTEXT
-  #define STATIC_SSLCLIENT_CONTEXT
-  
-  // For using external BearSSL library.
-  // When othere libraries that contain BearSSL source files are used
-  // with this library, define this macro to exclude the internal BearSSL library
-  // to be compiled thats makes compilation error.
-  // #define BSSL_BUILD_EXTERNAL_CORE
-
-  // If board supports the filesystem APIs, to use CertStore class.
-  // #define ENABLE_FS
-  
-  // If PSRAM is supported.
-  // #define ENABLE_PSTAM
+### Installation
 
 
-  
-  #include <ESP_SSLClient.h>
 
-  ESP_SSLClient ssl_client;
-  EthernetClient basic_client;
-  
-  // ignore server ssl certificate verification
-  ssl_client.setInsecure();
+Use Arduino Library Manager or clone this repo:
 
-  /** Call setDebugLevel(level) to set the debug
-  * esp_ssl_debug_none = 0
-  * esp_ssl_debug_error = 1
-  * esp_ssl_debug_warn = 2
-  * esp_ssl_debug_info = 3
-  * esp_ssl_debug_dump = 4
-  */
-  ssl_client.setDebugLevel(1);
 
-  // Set the receive and transmit buffers size in bytes for dynamic memory allocation at runtime (512 to 16384).
-  // For server that does not support SSL fragment size negotiation, leave this setting the default value
-  // by not set any buffer size or set the rx buffer size to maximum SSL record size (16384) and 512 for tx buffer size.
-  // If STATIC_IN_BUFFER_SIZE or STATIC_OUT_BUFFER_SIZE is defined, the value set by this function will be ignored.
-  ssl_client.setBufferSizes(1024 /* rx */, 512 /* tx */);
-  
-  // Assign the basic client
-  // Due to the basic_client pointer is assigned, to avoid dangling pointer, basic_client should be existed 
-  // as long as it was used by ssl_client for transportation.
-  ssl_client.setClient(&basic_client);
 
-  Serial.print("Connecting to server...");
+```bash
 
-  String payload = "{\"title\":\"hello\"}";
-
-  if (ssl_client.connect("reqres.in", 443))
-  {
-    Serial.println(" ok");
-    Serial.println("Send POST request...");
-    ssl_client.print("POST /api/users HTTP/1.1\r\n");
-    ssl_client.print("Host: reqres.in\r\n");
-    ssl_client.print("Content-Type: application/json\r\n");
-    ssl_client.print("x-api-key: reqres-free-v1\r\n");
-    ssl_client.print("Content-Length: ");
-    ssl_client.print(payload.length());
-    ssl_client.print("\r\n\r\n");
-    ssl_client.print(payload);
-
-    Serial.print("Read response...");
-
-    unsigned long ms = millis();
-    while (!ssl_client.available() && millis() - ms < 3000)
-    {
-      delay(0);
-    }
-    
-    Serial.println();
-    while (ssl_client.available())
-    {
-      Serial.print((char)ssl_client.read());
-    }
-    Serial.println();
-  }
-  else
-    Serial.println(" failed\n");
-
-  ssl_client.stop();
+git clone https://github.com/mobizt/ESP_SSLClient.git
 
 ```
 
-## RP2040 Arduino SDK installation
 
-For Arduino IDE, the Arduino-Pico SDK can be installed from Boards Manager by searching pico and choose Raspberry Pi Pico/RP2040 to install.
 
-For PlatformIO, the Arduino-Pico SDK can be installed via platformio.ini
+### RP2040 Setup
 
-```ini
-[env:rpipicow]
-platform = https://github.com/maxgerhardt/platform-raspberrypi.git
-board = rpipicow
-framework = arduino
-board_build.core = earlephilhower
+
+
+For Arduino IDE:  
+
+Install Arduino-Pico SDK via Boards Manager → search “Pico”.
+
+
+
+For PlatformIO:
+
+
+
+```bash
+
+[env:rpipicow]  
+
+platform = https://github.com/maxgerhardt/platform-raspberrypi.git  
+
+board = rpipicow  
+
+framework = arduino  
+
+board_build.core = earlephilhower  
+
 monitor_speed = 115200
+
 ```
 
-See this Arduino-Pico SDK [documentation](https://arduino-pico.readthedocs.io/en/latest/) for more information.
 
 
 
-## Functions Interfaces
 
-The ESP_SSLClient available functions are similare to the WiFiClientSecure.h class in ESP8266.
-
-The Sessions and ServerSessions for ESP8266 BearSSL will be renamed to BearSSL_Sessions and BearSSL_ServerSessions respectively.
-
-For all functions available in this library, see [src/client/BSSL_TCP_Client.h](/src/client/BSSL_TCP_Client.h)
+## 🧪 Basic Usage
 
 
-## Additional Functions
-
-The following are the additional functions over ESP8266 WiFiClientSecure.
-
-### Set the client.
-
-param **`client`** The pointer to Client interface.
-
-param **`enableSSL`** The ssl option; true for enable, false for disable.
-
-Due to the client pointer is assigned, to avoid dangling pointer, client should be existed as long as it was used for transportation.
 
 ```cpp
-void setClient(Client *client, bool enableSSL = true);
+
+    #include <ESP_SSLClient.h>
+
+    ESP_SSLClient ssl_client;
+
+    EthernetClient basic_client;
+
+
+
+    ssl_client.setInsecure();    // Skip certificate verification
+
+    ssl_client.setDebugLevel(1); // Debug: 0–4
+
+    ssl_client.setBufferSizes(1024, 1024);
+
+    ssl_client.setClient(&basic_client);
+
+
+
+    if (ssl_client.connect("reqres.in", 443))
+
+    {
+
+        ssl_client.print("POST /api/users HTTP/1.1\r\n");
+
+        ssl_client.print("Host: reqres.in\r\n");
+
+        ssl_client.print("Content-Type: application/json\r\n");
+
+        ssl_client.print("x-api-key: reqres-free-v1\r\n");
+
+        ssl_client.print("Content-Length: 27\r\n\r\n");
+
+        ssl_client.print("{\"title\":\"hello\"}");
+
+
+
+        while (!ssl_client.available())
+
+            delay(0);
+
+        while (ssl_client.available())
+
+            Serial.print((char)ssl_client.read());
+
+    }
+
+    ssl_client.stop();
+
 ```
 
+## 🔍 API Highlights
 
-### Set debug level.
+| Method | Description |
+|---|---|
+| `**setClient(Client *client)**` | **CRITICAL: Assigns the underlying transport layer (e.g., `WiFiClient`, `EthernetClient`) for secure connection.** |
+| `setClient(Client *client, bool enableSSL)` | Assign transport client and optionally enable/disable SSL immediately |
+| `setDebugLevel(int level)` | Set debug verbosity (0-4) |
+| `setBufferSizes(size_t rx, size_t tx)` | Configure memory buffers |
+| `connectSSL()` | Upgrade an existing connection to SSL/TLS (e.g., for STARTTLS) |
+| `validate(host/IP, port)` | Verify connection target |
+| `enableSSL(bool)` | Toggle SSL layer |
+| `setTimeout(uint32_t)` | TCP timeout |
+| `setSessionTimeout(uint32_t)` | Session timeout (ESP32 only) |
 
-param **`level`** The debug level or esp_ssl_client_debug_level.
+> Full API: `src/client/BSSL_TCP_Client.h`
 
-esp_ssl_debug_none = 0
+---
 
-esp_ssl_debug_error = 1
+## ⚙️ Configuration Guide by Platform
 
-esp_ssl_debug_warn = 2
+| Platform | Notes |
+|---|---|
+| **ESP32 / ESP8266** | ESP8266 uses native BearSSL; ESP32 uses bundled BearSSL. Optional PSRAM and filesystem support |
+| **RP2040** | Requires Arduino-Pico SDK. Compatible with WiFi/Ethernet. Supports ESP-Mail-Client |
+| **AVR** | **Needs external SRAM** (e.g., 23LC1024). Use `STATIC_*` macros. ~9.8 KB RAM, ~178 KB Flash |
+| **Teensy / STM32 / SAMD** | Use compatible networking libraries. Define `STATIC_*` macros if memory-constrained. Supports ESP-Mail-Client |
 
-esp_ssl_debug_info = 3
+---
 
-esp_ssl_debug_dump = 4
+## 🧰 Macro Summary
 
-```cpp
-void setDebugLevel(int level);
-```
+Define these in your main sketch or `platformio.ini` to customize the build.
 
+| Macro | Purpose |
+|---|---|
+| `ENABLE_DEBUG` | Enable debug printing |
+| `ENABLE_ERROR_STRING` | Show detailed error messages |
+| `DEBUG_PORT` | Define debug output port (default: `Serial`) |
+| `SSLCLIENT_INSECURE_ONLY` | Disable cert/fingerprint checks entirely |
+| `STATIC_IN_BUFFER_SIZE` | RX buffer size (stack/static allocation) |
+| `STATIC_OUT_BUFFER_SIZE` | TX buffer size (stack/static allocation) |
+| `STATIC_X509_CONTEXT` | Use static cert context (for low-RAM boards) |
+| `STATIC_SSLCLIENT_CONTEXT` | Use static SSL context (for low-RAM boards) |
+| `BSSL_BUILD_EXTERNAL_CORE` | Use external BearSSL library (advanced) |
+| `ENABLE_FS` | Enable filesystem for CertStore |
+| `ENABLE_PSTAM` | Enable PSRAM support (ESP32 only) |
 
-### Validate the last Client connection with these host and port.
+---
 
-param **`host`** The server host name.
+## 🔌 AVR Mega 2560 + SRAM Wiring (23LC1024)
 
-param **`port`** The server port to connect.
+| Mega 2560 Pin | 23LC1024 Pin |
+|---|---|
+| 50 (MISO)     | SO           |
+| 51 (MOSI)     | SI           |
+| 52 (SCK)      | SCK          |
+| 53 (SS)       | CS           |
+| GND           | VSS          |
+| 3.3V or 5V    | VCC          |
 
-The Client connection will be closed when the provided host or port is not match with that of last connection.
+> ⚠️ Use level shifter if 3.3V SRAM with 5V Mega.
 
-```cpp
-void validate(const char *host, uint16_t port);
-```
+---
 
+## 🧪 Diagnostic Tips
 
-### Validate the last Client connection with these IP and port.
+- **Use `setDebugLevel(4)`** to trace the BearSSL handshake step-by-step for connection issues.
+- **Define `ENABLE_ERROR_STRING`** to get readable error messages instead of just error codes.
+- **Use `setInsecure()`** if testing connectivity is your first goal (before implementing cert validation).
+- **Check buffer sizes** if handshake fails (try increasing them, e.g., 2048/1024).
+- **Validate transport client lifetime**—ensure the client pointer you pass to `setClient()` remains valid.
 
-param **`ip`** The server IP to connect.
+---
 
-param **`port`** The server port to connect.
+## 📄 License
 
-The Client connection will be closed when the provided IP or port is not match with that of last connection.
+MIT License
 
-```cpp
-void validate(IPAddress ip, uint16_t port);
-```
+Copyright (c) 2025 Suwatchai K.
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-### Enable/disable the SSL layer transport.
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-param **`enable`** The enable option; true for enable, false to disable.
-
-```cpp
-void enableSSL(bool enable);
-```
-
-
-### Upgrade the current connection by setting up the SSL and perform the SSL handshake.
-
-return **`operating result`**.
-
-```cpp
-bool connectSSL();
-```
-
-### Set the TCP connection timeout in seconds.
-
-param **`seconds`** The TCP connection timeout in seconds.
-
-```cpp
-int setTimeout(uint32_t seconds);
-```
-
-### Get the TCP connection timeout in seconds.
-
-return **`The TCP connection timeout`** in seconds.
-
-```cpp
-int getTimeout();
-```
-
-### Set the SSL handshake timeout in seconds.
-
-param **`handshake_timeout`** The SSL handshake timeout in seconds.
-
-```cpp
-void setHandshakeTimeout(unsigned long handshake_timeout);
-```
-
-### Set the TCP session timeout in seconds.
-
-param **`seconds`** The TCP session timeout in seconds.
-
-The minimum session timeout value is 60 seconds.
-
-Set 0 to disable session timed out.
-
-If There is no data to send (write) within this period, the current connection will be closed and reconnect.
-
-This requires when ESP32 WiFiClient was used.
-
-```cpp
-int setSessionTimeout(uint32_t seconds);
-```
-
-## License
-
-The codes and examples in this repository are licensed under the MIT License. 
-
-Copyright (c) 2025, Suwatchai K. All rights reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-*The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.*
-
-`THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`
-
-*Last updated 2025-11-06 UTC.*
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.

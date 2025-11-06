@@ -7,14 +7,19 @@
 #ifndef ESP_SSLCLIENT_H
 #define ESP_SSLCLIENT_H
 
-
-
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include <Arduino.h>
 #include <Client.h>
+
+#if defined(__AVR__)
+#define CONST_IN_FLASH PROGMEM
+#else
+#define CONST_IN_FLASH 
+#include <vector>
+#endif
 
 #if (defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #define BSSL_BUILD_PLATFORM_CORE
@@ -23,10 +28,6 @@
 #endif
 
 
-
-#if !defined(__AVR__)
-#include <vector>
-#endif
 
 #if defined(BSSL_BUILD_PLATFORM_CORE) && !defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE override
@@ -134,11 +135,11 @@ static bool send_abort(Client *probe, bool supportsLen)
 {
     // If we're still connected, send the appropriate notice that
     // we're aborting the handshake per RFCs.
-    static const uint8_t clientAbort_P[] PROGMEM = {
+    static const uint8_t clientAbort_P[] CONST_IN_FLASH = {
         0x15 /*alert*/, 0x03, 0x03 /*TLS 1.2*/, 0x00, 0x02,
         1, 90 /* warning: user_cancelled */
     };
-    static const uint8_t clientClose_P[] PROGMEM = {
+    static const uint8_t clientClose_P[] CONST_IN_FLASH = {
         0x15 /*alert*/, 0x03, 0x03 /*TLS 1.2*/, 0x00, 0x02,
         1, 0 /* warning: close_notify */
     };
@@ -163,6 +164,7 @@ extern "C"
 {
 #include "bssl/bearssl.h"
 }
+
 #include "client/Memory.h"
 #include "client/Helper.h"
 #include "client/CertStore.h"

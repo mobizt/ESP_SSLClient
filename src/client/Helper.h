@@ -153,7 +153,6 @@ namespace key_bssl
         if (!dc)
             return false; // OOM check on context allocation
 
-        // Replace std::vector<uint8_t> vdn; with our dynamic buffer
         DynBuffer vdn_buffer;
         br_x509_pkey *pk = nullptr; // Raw pointer for the public key structure
 
@@ -360,7 +359,6 @@ namespace key_bssl
         // Replace std::unique_ptr with manual pointer
         br_pem_decoder_context *pc = nullptr;
 
-        // Replace std::vector<pem_object> pem_list;
         PemList pem_list;
 
         key_bssl::pem_object po;
@@ -536,7 +534,6 @@ namespace key_bssl
 
     br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
     {
-        // Replace std::vector<br_x509_certificate> cert_list;
         br_x509_certificate *cert_array = nullptr;
         size_t cert_count = 0;
         size_t cert_capacity = 0; // Tracks allocated space for dynamic growth
@@ -991,7 +988,7 @@ private:
     br_ssl_session_parameters _session;
 };
 
-static const uint16_t suites_P[] PROGMEM = {
+static const uint16_t suites_P[] CONST_IN_FLASH = {
 #ifndef BEARSSL_SSL_BASIC
     BR_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
     BR_TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -1044,7 +1041,7 @@ static const uint16_t suites_P[] PROGMEM = {
 };
 
 // For apps which want to use less secure but faster ciphers, only
-static const uint16_t faster_suites_P[] PROGMEM = {
+static const uint16_t faster_suites_P[] CONST_IN_FLASH = {
     BR_TLS_RSA_WITH_AES_256_CBC_SHA256,
     BR_TLS_RSA_WITH_AES_128_CBC_SHA256,
     BR_TLS_RSA_WITH_AES_256_CBC_SHA,
