@@ -1486,7 +1486,7 @@ private:
         mFreeSSL();
         _oom_err = false;
 
-#if defined(ENABLE_DEBUG)
+#if defined(ENABLE_DEBUG) && !defined(SSLCLIENT_INSECURE_ONLY)
         // BearSSL will reject all connections unless an authentication option is set, warn in DEBUG builds
 #if defined(ENABLE_FS)
 #define CRTSTORECOND &&!_certStore
