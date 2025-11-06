@@ -154,12 +154,16 @@ ssl_client.stop();
 
 ## ⚙️ Configuration Guide by Platform
 
-| Platform | Notes |
-|---|---|
-| **ESP32 / ESP8266** | ESP8266 uses native BearSSL; ESP32 uses bundled BearSSL. Optional PSRAM and filesystem support |
-| **RP2040** | Requires Arduino-Pico SDK. Compatible with WiFi/Ethernet. Supports ESP-Mail-Client |
-| **AVR** | **Needs external SRAM** (e.g., 23LC1024). Use `STATIC_*` macros. ~9.8 KB RAM, ~178 KB Flash |
-| **Teensy / STM32 / SAMD** | Use compatible networking libraries. Define `STATIC_*` macros if memory-constrained. Supports ESP-Mail-Client |
+
+| Platform             | Recommended Macros & Settings           | RAM Usage       | Flash Usage     | Notes                         |
+|----------------------|------------------------------------------|------------------|------------------|-------------------------------|
+| ESP32                | All macros below; ENABLE_PSRAM optional | 6.4% (20.9 KB)   | 28.2% (374.0 KB) | Efficient; PSRAM optional     |
+| ESP8266 (D1)         | All macros below                         | 34.8% (28.5 KB)  | 33.7% (352.0 KB) | RAM tight; insecure mode helps|
+| RP2040 Pico W        | All macros below                         | 22.6% (70.2 KB)  | 6.2% (96.0 KB)   | Plenty of RAM; stable         |
+| Nano RP2040 Connect  | All macros below                         | 15.9% (47.2 KB)  | 6.2% (96.0 KB)   | RAM; stable                   |
+| STM32F103C8          | All macros below                         | 31.6% (10.1 KB)  | 61.1% (48.9 KB)  | RAM-constrained but viable    |
+| UNO R4 WiFi          | All macros below                         | 33.6% (3.3 KB)   | 43.3% (115.4 KB) | Stable; good flash            |
+
 
 ---
 
