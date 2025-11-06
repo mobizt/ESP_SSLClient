@@ -152,19 +152,19 @@ ssl_client.stop();
 
 ---
 
-## ⚙️ Configuration Guide by Platform
+## 🛠️ Configuration Guide by Platform
 
-| Platform             | Recommended Macros & Settings                                      | RAM Usage           | Flash Usage             | Notes                                               |
-|----------------------|--------------------------------------------------------------------|----------------------|--------------------------|-----------------------------------------------------|
-| ESP32                | All macros below; ENABLE_PSRAM optional                            | 6.4% (20.9 KB)       | 28.2% (374.0 KB)         | Efficient; PSRAM optional                           |
-| ESP8266 (D1)         | All macros below                                                   | 34.8% (28.5 KB)      | 33.7% (352.0 KB)         | RAM tight; insecure mode helps                      |
-| RP2040 Pico W        | All macros below                                                   | 22.6% (70.2 KB)      | 6.2% (96.0 KB)           | Plenty of RAM; stable                               |
-| Nano RP2040 Connect  | All macros below                                                   | 15.9% (47.2 KB)      | 6.2% (96.0 KB)           | RAM; stable                                         |
-| STM32F103C8          | All macros below                                                   | 31.6% (10.1 KB)      | 61.1% (48.9 KB)          | RAM-constrained but viable                          |
-| UNO R4 WiFi          | All macros below                                                   | 33.6% (3.3 KB)       | 43.3% (115.4 KB)         | Stable; good flash                                  |
-| Mega 2560 + SRAM     | ✅ All macros below (external SRAM required)                       | 🔺120.5% (6 KB)       | 69.8% (17.9 KB)          | Exceeds onboard RAM; external SRAM required         |
-| MKR1000 USB          | ✅ All macros below                                                | 7.5% (2.5 KB)        | 30.8% (8 KB)             | Secure and efficient                                |
-| Teensy 4.1           | ✅ All macros below; remove PROGMEM from BearSSL symbols           | RAM1: 3.8 KB, RAM2: 12.4 KB | FLASH: 8.9 KB code + 4.8 KB data | Large memory; compile fix applied                   |
+| Platform             | Recommended Macros & Settings                                      | RAM Usage               | Flash Usage                  | Notes                                               |
+|----------------------|--------------------------------------------------------------------|--------------------------|------------------------------|-----------------------------------------------------|
+| ESP32                | ✅ All macros below; ENABLE_PSRAM optional                         | 6.4% (20.9 KB)           | 28.5% (374.0 KB)             | Efficient; PSRAM optional                           |
+| ESP8266 (Wemos D1)   | ✅ All macros below                                                | 34.8% (28.5 KB)          | 33.7% (352.0 KB)             | RAM tight; insecure mode helps                      |
+| RP2040 Pico W        | ✅ All macros below                                                | 26.8% (70.2 KB)          | 15.9% (166.5 KB)             | Plenty of RAM; stable                               |
+| Nano RP2040 Connect  | ✅ All macros below                                                | 15.9% (41.7 KB)          | 0.2% (4.2 KB)                | Flash usage minimal                                 |
+| STM32F103C8          | ✅ All macros below                                                | 6.1% (1.2 KB)            | 61.1% (80.1 KB)              | RAM-constrained but viable                          |
+| UNO R4 WiFi          | ✅ All macros below                                                | 9.3% (3.0 KB)            | 43.3% (113.5 KB)             | Stable; good flash margin                           |
+| Mega 2560 + SRAM     | ✅ All macros below (external SRAM required)                       | ⚠️ 120.5% (9.9 KB)        | 69.8% (177.2 KB)             | Exceeds onboard RAM; external SRAM required         |
+| MKR1000 USB          | ✅ All macros below                                                | 7.5% (2.5 KB)            | 30.9% (80.9 KB)              | Secure and efficient                                |
+| Teensy 4.1           | ✅ All macros below; remove PROGMEM from BearSSL symbols           | RAM1: 3.8 KB, RAM2: 12.4 KB | FLASH: 8.9 KB code + 3.0 KB data | Large memory; compile fix applied                   |
 
 ---
 
