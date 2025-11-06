@@ -163,6 +163,21 @@ ssl_client.stop();
 
 ---
 
+## 💾 External RAM for Arduino Mega 2560 (Recommended)
+
+The Arduino Mega 2560's built-in 8 kB of SRAM is insufficient for SSL/TLS operations. You must use external RAM. We **strongly recommend** the **Parallel SRAM** method for its reliability and ease of use.
+
+### Recommended Solution: Parallel SRAM Shields (≥ 512 kB) 🥇
+
+This approach uses the Mega's built-in **External Memory Interface (EMI)** to seamlessly map external memory into the CPU's address space.
+
+* **Hardware:** Dedicated peripheral shields like **QuadRAM** or **XMEM+**. These boards connect to the Mega's parallel Address and Data buses.
+* **Key Advantage:** The external memory is treated as internal RAM. Standard C functions like **`malloc()` and `new` use the external RAM**, and the **Stack is safely relocated**, virtually eliminating memory overflow issues common with the small internal 8 kB of SRAM.
+* **Setup:** Requires minimal two-line hardware register setup to enable the EMI, followed by relocating the C runtime pointers (`__malloc_heap_start`, etc.) to the shield's address range. **No complex drivers are needed.**
+
+---
+
+
 ## 🧰 Macro Summary
 
 Define these in your main sketch or `platformio.ini` to customize the build.
@@ -179,24 +194,10 @@ Define these in your main sketch or `platformio.ini` to customize the build.
 | `STATIC_SSLCLIENT_CONTEXT` | Use static SSL context (for low-RAM boards) |
 | `BSSL_BUILD_EXTERNAL_CORE` | Use external BearSSL library (advanced) |
 | `ENABLE_FS` | Enable filesystem for CertStore |
-| `ENABLE_PSTAM` | Enable PSRAM support (ESP32 only) |
+| `ENABLE_PSRAM` | Enable PSRAM support (ESP32 only) |
 
 ---
 
-## 🔌 AVR Mega 2560 + SRAM Wiring (23LC1024)
-
-| Mega 2560 Pin | 23LC1024 Pin |
-|---|---|
-| 50 (MISO)     | SO           |
-| 51 (MOSI)     | SI           |
-| 52 (SCK)      | SCK          |
-| 53 (SS)       | CS           |
-| GND           | VSS          |
-| 3.3V or 5V    | VCC          |
-
-> ⚠️ Use level shifter if 3.3V SRAM with 5V Mega.
-
----
 
 ## 🧪 Diagnostic Tips
 
