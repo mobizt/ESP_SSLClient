@@ -117,7 +117,6 @@ ssl_client.setClient(&basic_client);
 
 if (ssl_client.connect("reqres.in", 443))
 {
-
     ssl_client.print("POST /api/users HTTP/1.1\r\n");
     ssl_client.print("Host: reqres.in\r\n");
     ssl_client.print("Content-Type: application/json\r\n");
