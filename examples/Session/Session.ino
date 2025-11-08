@@ -189,6 +189,9 @@ void setup()
 {
     Serial.begin(115200);
 
+    Serial.print("ESP_Client version ");
+    Serial.println(ESP_SSLCLIENT_VERSION);
+
     ssl_client.setSession(&session1);
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO_W)

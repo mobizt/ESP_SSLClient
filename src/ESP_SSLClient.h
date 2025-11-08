@@ -7,6 +7,13 @@
 #ifndef ESP_SSLCLIENT_H
 #define ESP_SSLCLIENT_H
 
+#define ESP_SSLCLIENT_VERSION_MAJOR 3
+#define ESP_SSLCLIENT_VERSION_MINOR 0
+#define ESP_SSLCLIENT_VERSION_PATCH 2
+#define ESP_SSLCLIENT_VERSION "3.0.2"
+
+
+
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wvla"
@@ -17,7 +24,7 @@
 #if defined(__AVR__)
 #define CONST_IN_FLASH PROGMEM
 #else
-#define CONST_IN_FLASH 
+#define CONST_IN_FLASH
 #include <vector>
 #endif
 
@@ -27,7 +34,12 @@
 #define BSSL_BUILD_INTERNAL_CORE
 #endif
 
-
+#if defined(__MK64FX512__) || defined(__MK66FX1M0__) || defined(__IMXRT1062__) || defined(__IMXRT1052__)
+// Target Teesy 3.x and 4.x platforms which define PSTR poorly.
+#undef PSTR
+// Redefine PSTR using a unique variable name to avoid collision
+#define PSTR(s) ([]() -> const char * { static const char unique_string[] = s; return unique_string; }())
+#endif
 
 #if defined(BSSL_BUILD_PLATFORM_CORE) && !defined(ARDUINO_ARCH_RP2040) && !defined(ARDUINO_NANO_RP2040_CONNECT)
 #define EMBED_SSL_ENGINE_BASE_OVERRIDE override

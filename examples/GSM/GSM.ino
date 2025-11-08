@@ -45,6 +45,10 @@ const char gprsPass[] = "";
 // This can save memory and program space usage.
 #define SSLCLIENT_INSECURE_ONLY
 
+// This standard HTTP/1.1 request-response pattern is strictly sequential,
+// making it ideally suited for the RAM-saving Half-Duplex mode.
+#define SSLCLIENT_HALF_DUPLEX
+
 // When pre-memory allocation are prefered (stack memory used).
 // Don't define when dynamic memory allocation is prefered (heap or PSRAM memory used).
 // #define STATIC_IN_BUFFER_SIZE 2048
@@ -98,6 +102,10 @@ void setup()
 {
     // Set console baud rate
     SerialMon.begin(115200);
+
+    Serial.print("ESP_Client version ");
+    Serial.println(ESP_SSLCLIENT_VERSION);
+    
     delay(10);
     pinMode(BAT_EN, OUTPUT);
     digitalWrite(BAT_EN, HIGH);

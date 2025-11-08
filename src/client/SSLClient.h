@@ -1510,7 +1510,7 @@ private:
 #if !defined(STATIC_IN_BUFFER_SIZE)
         _iobuf_in = reinterpret_cast<unsigned char *>(esp_sslclient_malloc(_iobuf_in_size));
 #endif
-#if !defined(STATIC_OUT_BUFFER_SIZE)
+#if !defined(STATIC_OUT_BUFFER_SIZE) && !defined(SSLCLIENT_HALF_DUPLEX)
         _iobuf_out = reinterpret_cast<unsigned char *>(esp_sslclient_malloc(_iobuf_out_size));
 #endif
 
@@ -1530,10 +1530,10 @@ private:
 #if !defined(STATIC_IN_BUFFER_SIZE)
             !_iobuf_in
 #endif
-#if !defined(STATIC_IN_BUFFER_SIZE) && !defined(STATIC_OUT_BUFFER_SIZE)
+#if !defined(STATIC_IN_BUFFER_SIZE) && !defined(STATIC_OUT_BUFFER_SIZE) && !defined(SSLCLIENT_HALF_DUPLEX)
             ||
 #endif
-#if !defined(STATIC_OUT_BUFFER_SIZE)
+#if !defined(STATIC_OUT_BUFFER_SIZE) && !defined(SSLCLIENT_HALF_DUPLEX)
             !_iobuf_out
 #endif
         )
@@ -1567,7 +1567,11 @@ private:
             return 0;
         }
 
+#if defined(SSLCLIENT_HALF_DUPLEX)
+        br_ssl_engine_set_buffer(_eng, _iobuf_in, _iobuf_in_size, 0);
+#else
         br_ssl_engine_set_buffers_bidi(_eng, _iobuf_in, _iobuf_in_size, _iobuf_out, _iobuf_out_size);
+#endif
         br_ssl_engine_set_versions(_eng, _tls_min, _tls_max);
 
 #if !defined(SSLCLIENT_INSECURE_ONLY)
@@ -2203,7 +2207,7 @@ private:
         if (_iobuf_in)
             esp_sslclient_free((unsigned char **)&_iobuf_in);
 #endif
-#if !defined(STATIC_OUT_BUFFER_SIZE)
+#if !defined(STATIC_OUT_BUFFER_SIZE) && !defined(SSLCLIENT_HALF_DUPLEX)
         // Check and free dynamically allocated output buffer
         if (_iobuf_out)
             esp_sslclient_free((unsigned char **)&_iobuf_out);
@@ -2419,7 +2423,7 @@ private:
         if (_iobuf_in)
             esp_sslclient_free((unsigned char **)&_iobuf_in);
 #endif
-#if !defined(STATIC_OUT_BUFFER_SIZE)
+#if !defined(STATIC_OUT_BUFFER_SIZE) && !defined(SSLCLIENT_HALF_DUPLEX)
         // Check and free dynamically allocated output buffer
         if (_iobuf_out)
             esp_sslclient_free((unsigned char **)&_iobuf_out);
@@ -2512,6 +2516,7 @@ private:
     unsigned char *_iobuf_in = nullptr;
 #endif
 
+#if !defined(SSLCLIENT_HALF_DUPLEX)
 #if defined(STATIC_OUT_BUFFER_SIZE)
 
 #if STATIC_OUT_BUFFER_SIZE < 512
@@ -2522,6 +2527,7 @@ private:
     unsigned char _iobuf_out[STATIC_OUT_BUFFER_SIZE];
 #else
     unsigned char *_iobuf_out = nullptr;
+#endif
 #endif
 
     int _iobuf_in_size = 512;

@@ -32,6 +32,10 @@ void setup()
 {
 
     Serial.begin(115200);
+
+    Serial.print("ESP_Client version ");
+    Serial.println(ESP_SSLCLIENT_VERSION);
+    
     delay(5000);
 
     PublicKey pk;

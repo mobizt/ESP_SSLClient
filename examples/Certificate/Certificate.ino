@@ -64,6 +64,9 @@ WiFiMulti multi;
 void setup()
 {
     Serial.begin(115200);
+    
+    Serial.print("ESP_Client version ");
+    Serial.println(ESP_SSLCLIENT_VERSION);
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
     multi.addAP(WIFI_SSID, WIFI_PASSWORD);

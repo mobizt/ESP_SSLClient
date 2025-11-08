@@ -34,6 +34,9 @@
 // This can save memory and program space usage.
 #define SSLCLIENT_INSECURE_ONLY
 
+// Do NOT define SSLCLIENT_HALF_DUPLEX) to ensure reliable QoS and keep-alive functionality.
+// #define SSLCLIENT_HALF_DUPLEX
+
 // When pre-memory allocation are prefered (stack memory used).
 // Don't define when dynamic memory allocation is prefered (heap or PSRAM memory used).
 // #define STATIC_IN_BUFFER_SIZE 2048
@@ -87,6 +90,9 @@ void setup()
 {
 
   Serial.begin(115200);
+
+  Serial.print("ESP_Client version ");
+  Serial.println(ESP_SSLCLIENT_VERSION);
 
 #if defined(ARDUINO_RASPBERRY_PI_PICO_W)
   multi.addAP(WIFI_SSID, WIFI_PASSWORD);
