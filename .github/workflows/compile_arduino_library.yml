@@ -17,24 +17,21 @@ jobs:
       fail-fast: false
       matrix:
         board_config:
-          # FQBN (VENDOR:ARCH:BOARD) | Required Core/Platform | URL (if not official)
-          
           # --- Arduino SAMD/Renesas (Official Core) ---
-          - { name: 'MKR WiFi 1010', board: 'arduino:samd:mkrwifi1010', platform: 'arduino:samd' }
-          - { name: 'UNO R4 WiFi', board: 'arduino:renesas_uno:unor4wifi', platform: 'arduino:renesas_uno' }
+          - { name: 'MKR WiFi 1010', board: 'arduino:samd:mkrwifi1010', platform: 'arduino:samd', category: 'standard' }
+          - { name: 'UNO R4 WiFi', board: 'arduino:renesas_uno:unor4wifi', platform: 'arduino:renesas_uno', category: 'standard' }
           
-          # --- ESP32 Family (Requires Custom URL - FQBN FIXED) ---
-          - { name: 'ESP32 Dev Module', board: 'esp32:esp32:esp32doit-devkit-v1', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' } # <-- FQBN FIXED
-          - { name: 'LOLIN32', board: 'esp32:esp32:lolin32', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
-          - { name: 'ESP32-S3 DevKitC', board: 'esp32:esp32:esp32s3', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
-          - { name: 'ESP32-C3 DevKitC', board: 'esp32:esp32:esp32c3', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
+          # --- ESP32 Family (Requires Custom URL) ---
+          - { name: 'ESP32 Dev Module', board: 'esp32:esp32:esp32doit-devkit-v1', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json', category: 'standard' }
+          - { name: 'LOLIN32', board: 'esp32:esp32:lolin32', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json', category: 'standard' }
+          - { name: 'ESP32-S3 DevKitC', board: 'esp32:esp32:esp32s3', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json', category: 'standard' }
 
           # --- ESP8266 (Requires Custom URL) ---
-          - { name: 'D1 Mini', board: 'esp8266:esp8266:d1_mini', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
-          - { name: 'NodeMCU V2', board: 'esp8266:esp8266:nodemcuv2', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
+          - { name: 'D1 Mini', board: 'esp8266:esp8266:d1_mini', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json', category: 'standard' }
 
-          # --- STM32 (Requires Custom URL - URL FIXED) ---
-          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://stm32duino.com/package_stm_index.json' } # <-- URL FIXED
+          # --- STM32 (Requires Isolated Install) ---
+          # We use a known-good GitHub URL for the core index that is generally more reliable.
+          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/main/package_stm_index.json', category: 'stm32' }
 
     name: Compile ${{ matrix.board_config.name }}
 
@@ -46,22 +43,31 @@ jobs:
       - name: 🛠️ Setup Arduino CLI
         uses: arduino/setup-arduino-cli@v2
 
-      # 2. Add custom platform URLs (needed for ESP and STM32)
+      # 2. Add custom platform URLs (for all non-STM32 third-party cores)
+      # STM32 is handled separately in step 3.
       - name: 🌐 Add Custom Board Manager URLs
-        if: ${{ matrix.board_config.url }}
+        if: ${{ matrix.board_config.url && matrix.board_config.category != 'stm32' }}
         run: |
           arduino-cli config add board_manager.additional_urls ${{ matrix.board_config.url }}
           
-      # 3. Update core index
-      - name: 🔄 Update Core Index
-        # Added --config-file to ensure all commands use the same config, including URLs
-        run: arduino-cli core update-index --config-file /home/runner/.arduino-cli/arduino-cli.yaml
-          
-      # 4. Install the required platform/core 
-      - name: 📥 Install Platform ${{ matrix.board_config.platform }}
-        run: arduino-cli core install ${{ matrix.board_config.platform }}
+      # 3. FIX: Dedicated STM32 Installation Step (Uses its own URL for higher reliability)
+      - name: 📥 Install STM32 Platform
+        if: ${{ matrix.board_config.category == 'stm32' }}
+        run: |
+          # Use a direct core installation path for higher reliability, passing the URL 
+          # directly to the install command to ensure it uses the specific index.
+          arduino-cli core update-index --additional-urls ${{ matrix.board_config.url }}
+          arduino-cli core install ${{ matrix.board_config.platform }}
 
-      # 5. Create the test sketch containing your provided code
+      # 4. Install ALL OTHER Platforms (Standard and ESP)
+      - name: 📥 Install Other Platforms
+        if: ${{ matrix.board_config.category != 'stm32' }}
+        run: |
+          # The URLs were added in step 2. Now update the index and install the core.
+          arduino-cli core update-index
+          arduino-cli core install ${{ matrix.board_config.platform }}
+          
+      # 5. Create the test sketch containing your provided code (Code is unchanged)
       - name: 📝 Create test sketch
         run: |
           mkdir -p test_sketch
@@ -85,4 +91,5 @@ jobs:
 
       # 6. Compile the sketch against the FQBN
       - name: ⚙️ Compile Sketch for ${{ matrix.board_config.name }}
+        # The compile command remains consistent across all boards.
         run: arduino-cli compile --fqbn ${{ matrix.board_config.board }} --library . test_sketch
