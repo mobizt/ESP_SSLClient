@@ -1,0 +1,100 @@
+name: Arduino CLI Library Compile
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/compile_examples.yml'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/compile_examples.yml'
+
+jobs:
+  # The FQBN (Fully Qualified Board Name) list must be explicitly defined
+  # for the boards you want to test.
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board_config:
+          # FQBN (VENDOR:ARCH:BOARD) | Required Core/Platform | Needs Custom URL
+          # Note: The 'board' field is now the FQBN for Arduino CLI
+          
+          # --- Arduino AVR/SAMD (Official Core) ---
+          - { name: 'Arduino Mega 2560', board: 'arduino:avr:mega:cpu=atmega2560', platform: 'arduino:avr' }
+          - { name: 'MKR WiFi 1010', board: 'arduino:samd:mkrwifi1010', platform: 'arduino:samd' }
+          - { name: 'MKR 1000 USB', board: 'arduino:samd:mkr1000', platform: 'arduino:samd' }
+          - { name: 'UNO R4 WiFi', board: 'arduino:renesas_uno:unor4wifi', platform: 'arduino:renesas_uno' }
+          
+          # --- ESP32 Family (Requires Custom URL) ---
+          - { name: 'ESP32 Dev Module', board: 'esp32:esp32:esp32dev', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
+          - { name: 'LOLIN32', board: 'esp32:esp32:lolin32', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
+          - { name: 'ESP32-S3 DevKitC', board: 'esp32:esp32:esp32s3', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
+          - { name: 'ESP32-C3 DevKitC', board: 'esp32:esp32:esp32c3', platform: 'esp32:esp32', url: 'https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json' }
+
+          # --- ESP8266 (Requires Custom URL) ---
+          - { name: 'D1 Mini', board: 'esp8266:esp8266:d1_mini', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
+          - { name: 'NodeMCU V2', board: 'esp8266:esp8266:nodemcuv2', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
+
+          # --- STM32 (Requires Custom URL) ---
+          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/main/package_stm_index.json' }
+          # NOTE: Blue Pill F103C8 is generally not well-supported by Arduino CLI out-of-the-box
+
+    name: Compile ${{ matrix.board_config.name }}
+
+    steps:
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Install Arduino CLI
+      - name: 🛠️ Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      # 2. Add custom platform URLs (needed for ESP and STM32)
+      - name: 🌐 Add Custom Board Manager URLs
+        if: ${{ matrix.board_config.url }}
+        run: |
+          arduino-cli config add board_manager.additional_urls ${{ matrix.board_config.url }}
+          
+      # 3. Update core index
+      - name: 🔄 Update Core Index
+        run: arduino-cli core update-index
+
+      # 4. Install the required platform/core
+      - name: 📥 Install Platform ${{ matrix.board_config.platform }}
+        run: arduino-cli core install ${{ matrix.board_config.platform }}
+
+      # 5. Install the library itself (which is in the root directory)
+      - name: 📦 Install Library Under Test
+        # This tells the CLI to recognize the current directory as a library
+        run: arduino-cli lib install --library-path . .
+
+      # 6. Create the test sketch containing your provided code
+      - name: 📝 Create test sketch
+        run: |
+          mkdir -p test_sketch
+          cat << EOF > test_sketch/test_sketch.ino
+          #include <ESP_SSLClient.h>
+          
+          ESP_SSLClient ssl_client;
+          
+          void setup()
+          {
+              ssl_client.setInsecure();
+              ssl_client.setBufferSizes(2048, 512);
+              // Compilation will check if these functions exist, 
+              // regardless of whether they can run on the target board.
+              ssl_client.connect("mock.com", 443);
+              ssl_client.stop();
+          }
+          
+          void loop()
+          {
+          }
+          EOF
+
+      # 7. Compile the sketch against the FQBN
+      - name: ⚙️ Compile Sketch for ${{ matrix.board_config.name }}
+        run: arduino-cli compile --fqbn ${{ matrix.board_config.board }} test_sketch

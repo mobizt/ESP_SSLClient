@@ -1,26 +1,31 @@
 name: cpplint
 
 on:
-   pull_request:
-      paths-ignore:
-       - '.github/workflows/compile_*.yml'
+  pull_request:
+    paths-ignore:
+      # Ignore linting check if only compilation workflow files changed
+      - '.github/workflows/compile_*.yml'
+
 jobs:
-  build:
+  lint: # Renamed job from 'build' to 'lint' for clarity
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: cpplint
-        uses: reviewdog/action-cpplint@master
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4 # Updated to v4 for security and performance
+
+      - name: 🔍 Run cpplint via Reviewdog
+        uses: reviewdog/action-cpplint@v1 # Using @v1 as a common stable major version
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-check
           flags: --linelength=100
-          filter: "-whitespace/tab\
-           ,-readability/braces\
-           ,-whitespace/braces\
-           ,-whitespace/comments\
-           ,-whitespace/indent\
-           ,-whitespace/newline\
-           ,-whitespace/operators\
-           ,-whitespace/parens\
-           "
+          # Using YAML multi-line string (>) for improved filter readability
+          filter: >
+            -whitespace/tab,
+            -readability/braces,
+            -whitespace/braces,
+            -whitespace/comments,
+            -whitespace/indent,
+            -whitespace/newline,
+            -whitespace/operators,
+            -whitespace/parens
