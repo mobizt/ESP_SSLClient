@@ -13,6 +13,22 @@ Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRA
 
 ---
 
+## 📖 Table of Contents
+
+1.  [🔧 Features](#-features)
+2.  [📦 Supported Platforms](#-supported-platforms)
+3.  [🚀 Getting Started](#-getting-started)
+    * [✅ Installation](#-installation)
+    * [📋 Requirements](#-requirements)
+4.  [🧠 Memory Usage Discrepancy Note](#-memory-usage-discrepancy-note)
+5.  [📦 Buffer Configuration Guide](#-buffer-configuration-guide)
+6.  [🧰 Macro Summary](#-macro-summary)
+7.  [🌐 Duplex Mode Guide](#-duplex-mode-guide-when-to-use-half-duplex)
+8.  [🧪 Basic Usage](#-basic-usage)
+9.  [📄 License](#-license)
+
+---
+
 ## 🔧 Features
 
 - 🛡️ **Secure Data:** Data encryption via BearSSL (native or bundled)
@@ -52,74 +68,81 @@ Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRA
 
 ## 🚀 Getting Started
 
+### ✅ Installation
 
+You can install **ESP_SSLClient** via:
 
-### Installation
+- **Arduino Library Manager**: Search for `ESP_SSLClient` and click **Install**
+- **Manual Installation**:
+  1. Download the ZIP from [GitHub Releases](https://github.com/mobizt/ESP_SSLClient/releases)
+  2. Extract to your `libraries/` folder
+  3. Restart the Arduino IDE
 
+### 📋 Requirements
 
+| Platform         | SRAM Usage (Insecure Mode) | Notes                                                                 |
+|------------------|----------------------------|-----------------------------------------------------------------------|
+| ESP8266          | ~34 KB                     | BearSSL built-in; efficient with static buffers                      |
+| ESP32            | ~48 KB                     | Highly capable. Provides a memory-optimized alternative to the default client's large dynamic allocation (approx. 50 KB).|
+| RP2040 Pico W    | ~75 KB                     | Excellent performance with static buffers                            |
+| STM32F103C8      | ~7 KB                      | Requires aggressive optimization; insecure mode recommended          |
+| **Arduino Mega 2560** | **15.6 KB (194.8%)**         | Native 8 KB SRAM is insufficient; **external SRAM required** (e.g., XMEM+) |
+| Teensy 3.x–4.x   | 10–117 KB                  | Varies by model; supports full-duplex and large buffers              |
 
-Use Arduino Library Manager or clone this repo:
+---
 
+## 🧠 Memory Usage Discrepancy Note
 
+### Why Usage Varies on 32-bit Platforms
 
-```bash
+Users observing memory usage on modern 32-bit platforms (e.g., ESP32, Teensy 4.x) may see higher total **RAM Usage** (variables + code) compared to highly constrained microcontrollers like SAMD or AVR.
 
-git clone https://github.com/mobizt/ESP_SSLClient.git
+This difference is primarily due to the platform's execution model, not the library's overhead:
 
-```
+1.  **Low-SRAM Devices (AVR/SAMD):** On these chips, the memory usage reported (often below 10 KB) accurately reflects the library's core **static data and global variables**. The executable code remains primarily in Flash.
+2.  **High-Performance Devices (ESP/Teensy):** On these architectures, the compiler and linker are optimized for speed. They often map large portions of the **executable code** (up to 120 KB, as seen on Teensy 4.x) from Flash memory directly into high-speed **Data RAM (ITCM/OCRAM)** for faster execution.
 
+Therefore, while this library's core data overhead remains small and stable (e.g., $\approx 7-15\text{ KB}$ on all chips), the Total RAM Usage figure is inflated by the platform's aggressive performance optimization.
 
+**Always refer to the *Variable/Static* usage metrics to gauge the library's true memory footprint.**
 
-### RP2040 Setup
+## 📦 Buffer Configuration Guide
 
+This table summarizes recommended buffer sizes based on duplex mode and expected payload size. Adjust these macros in your sketch or `platformio.ini` for optimal performance.
 
+| Mode         | Macro(s) Required                | RX Buffer (`STATIC_IN_BUFFER_SIZE`) | TX Buffer (`STATIC_OUT_BUFFER_SIZE`) | Notes                                                                 |
+|--------------|----------------------------------|--------------------------------------|--------------------------------------|-----------------------------------------------------------------------|
+| **Half-Duplex** | `SSLCLIENT_HALF_DUPLEX`          | 2048–16709 bytes                     | *Ignored*                            | RX buffer used for both directions. Ideal for HTTP/1.1 and low-RAM boards. |
+| **Full-Duplex** | *(default)*                     | 2048–16384 bytes                     | 512–16469 bytes                      | Separate buffers for RX and TX. Required for streaming or pipelined protocols. |
+| **Minimal Setup** | `SSLCLIENT_INSECURE_ONLY`<br>`STATIC_X509_CONTEXT`<br>`STATIC_SSLCLIENT_CONTEXT` | 512 bytes                            | 512 bytes                            | For testing or ultra-low RAM boards. No cert validation. Debug disabled. |
 
-For Arduino IDE:  
+### 🧠 Notes
 
-Install Arduino-Pico SDK via Boards Manager → search “Pico”.
+- Minimum RX size: 2048 bytes recommended to handle TLS record + headers.
+- TX buffer: 512 bytes is sufficient for most request headers.
+- Fragmentation: If server supports Maximum Fragment Length Negotiation (MFLN), smaller buffers may work.
+- BearSSL: Can internally fragment large writes, but RX must still accommodate full record.
 
-
-
-For PlatformIO:
-
-
-
-```ini
-
-[env:rpipicow]  
-
-platform = https://github.com/maxgerhardt/platform-raspberrypi.git  
-board = rpipicow  
-framework = arduino  
-board_build.core = earlephilhower  
-monitor_speed = 115200
-
-```
-
-
+---
 ## 🧪 Basic Usage
 
 ```cpp
 // --- 1. OPTIMIZATION MACROS ---
 // Define these globally (before any library includes) to enable compile-time memory optimization.
-// NOTE: When defined, the subsequent ssl_client.setBufferSizes() call is ignored or guarded.
-#define SSLCLIENT_HALF_DUPLEX
+// NOTE: These flags define the physical memory reserved by the client object.
+
+#define SSLCLIENT_HALF_DUPLEX 
 
 // The Receive (RX/In) buffer size should ideally be 16709 bytes (16384 max payload + 325 overhead)
 // to safely accommodate any standard TLS record.
 // 
 // NOTE: A minimum size of 2048 bytes is required here because the specific application 
 // (HTTP response headers/body) is expected to contain a large payload, factoring in TLS overhead.
-// This size is viable only if the server supports Maximum Fragment Length Negotiation (MFLN), 
-// which limits the record size to fit this buffer, or if the application ensures smaller payloads.
 #define STATIC_IN_BUFFER_SIZE 2048
 
 // The Transmit (TX/Out) buffer size should ideally be 16469 bytes (16384 max payload + 85 overhead)
 // to safely handle the largest possible outgoing TLS record.
-// The Transmit (TX/Out) buffer primarily handles outbound request headers and body.
-// Since BearSSL can fragment large writes internally, a minimum size of 512 bytes 
-// is typically sufficient for most application protocols (e.g., HTTP requests).
-// For this case that SSLCLIENT_HALF_DUPLEX is defined, the following macro is ignored.
+// NOTE: This macro is ignored when SSLCLIENT_HALF_DUPLEX is defined.
 #define STATIC_OUT_BUFFER_SIZE 512
 
 #include <ESP_SSLClient.h>
@@ -131,19 +154,19 @@ ESP_SSLClient ssl_client;
 void setup() {
     Serial.begin(115200);
 
-    Serial.print("ESP_Client version ");
-    Serial.println(ESP_SSLCLIENT_VERSION);
-
     // Starting network connection
     Ethernet.begin();
+
+    Serial.print(F("ESP_Client version "));
+    Serial.println(ESP_SSLCLIENT_VERSION);
 
     // 2. Assign the underlying network interface immediately.
     ssl_client.setClient(&basic_client);
     
     // 3. Set buffer sizes (Conditionally called only if buffers are NOT static)
+    // NOTE: If the STATIC macros above were defined, setBufferSizes() is either ignored or
+    // its parameters are used to determine the static buffer size.
 #if !defined(STATIC_IN_BUFFER_SIZE) || !defined(STATIC_OUT_BUFFER_SIZE)
-    // NOTE: This call only performs buffer size adjustment if the corresponding 
-    // STATIC_IN/OUT_BUFFER_SIZE macros were NOT defined at compile time.
     ssl_client.setBufferSizes(2048, 512);
 #endif
 
@@ -171,40 +194,42 @@ void setup() {
         Serial.println(F("Connection failed."));
     }
 
-     // 5.Normally for effectiveness, the response reading should be done in loop()
-     // If the response is processed in the local function, it should be wait for 
-     // its available before reading 
-    while (!ssl_client.available())
-        delay(0);
-    while (ssl_client.available())
-        Serial.print((char)ssl_client.read());
+    // --- Response Reading & Cleanup ---
+    
+    // 5. Normally for effectiveness, the response reading should be done in loop()
+    // If the response is processed in the local function, it should be wait for 
+    // its available before reading 
+    while (!ssl_client.available())
+        delay(0); // WARNING: tight loop for minimal systems. Use millis() timer for production.
+        
+    while (ssl_client.available())
+        Serial.print((char)ssl_client.read());
 
-    if (!ssl_client.connected()) {
-        ssl_client.stop();
-        Serial.println(F("\nConnection closed."));
-        while(true) delay(100); 
-    }
+    if (!ssl_client.connected()) {
+        ssl_client.stop();
+        Serial.println(F("\nConnection closed."));
+        while(true) delay(100); 
+    }
 }
 
 void loop() {
+    // loop() remains empty as the example completes in setup().
 }
 ```
 
 ---
 
-## 🔍 API Highlights
+## 🧰 API Highlights
 
 | Method | Description |
-|---|---|
-| `**setClient(Client *client)**` | **CRITICAL: Assigns the underlying transport layer (e.g., `WiFiClient`, `EthernetClient`) for secure connection.** |
-| `setClient(Client *client, bool enableSSL)` | Assign transport client and optionally enable/disable SSL immediately |
-| `setDebugLevel(int level)` | Set debug verbosity (0-4) |
-| `setBufferSizes(size_t rx, size_t tx)` | Configure memory buffers |
-| `connectSSL()` | Upgrade an existing connection to SSL/TLS (e.g., for STARTTLS) |
-| `validate(host/IP, port)` | Verify connection target |
-| `enableSSL(bool)` | Toggle SSL layer |
-| `setTimeout(uint32_t)` | TCP timeout |
-| `setSessionTimeout(uint32_t)` | Session timeout (ESP32 only) |
+|--------|-------------|
+| `setClient(Client *client)` | Assigns the underlying transport layer |
+| `setBufferSizes(rx, tx)` | Configure memory buffers |
+| `connectSSL()` | Upgrade an existing connection to SSL/TLS |
+| `validate(host, port)` | Verify connection target |
+| `setInsecure()` | Disable certificate validation |
+| `setDebugLevel(level)` | Set debug verbosity (0–4) |
+
 
 > Full API: [`src/Readme.md`](https://github.com/mobizt/ESP_SSLClient/blob/main/src/Readme.md) or [`src/client/TCPClient.h`](https://github.com/mobizt/ESP_SSLClient/blob/main/src/client/TCPClient.h)
 
@@ -250,20 +275,17 @@ By allowing the debug and the debug information string by defining ENABLE_DEBUG 
 
 ---
 
-## 💾 External RAM for Arduino Mega 2560 (Recommended)
+## 🧠 Memory Expansion Guide (AVR)
 
-The Arduino Mega 2560's built-in 8 kB of SRAM is insufficient for SSL/TLS operations. You must use external RAM. We **strongly recommend** the **Parallel SRAM** method for its reliability and ease of use.
+For **Arduino Mega 2560**, native 8 KB SRAM is insufficient for SSL/TLS. Use external memory:
 
-### Recommended Solution: Parallel SRAM Shields (≥ 512 kB) 🥇
-
-This approach uses the Mega's built-in **External Memory Interface (EMI)** to seamlessly map external memory into the CPU's address space.
-
-* **Hardware:** Dedicated peripheral shields like **QuadRAM** or **XMEM+**. These boards connect to the Mega's parallel Address and Data buses.
-* **Key Advantage:** The external memory is treated as internal RAM. Standard C functions like **`malloc()` and `new` use the external RAM**, and the **Stack is safely relocated**, virtually eliminating memory overflow issues common with the small internal 8 kB of SRAM.
-* **Setup:** Requires minimal two-line hardware register setup to enable the EMI, followed by relocating the C runtime pointers (`__malloc_heap_start`, etc.) to the shield's address range. **No complex drivers are needed.**
+- **Recommended**: Parallel SRAM shields (e.g., XMEM+, QuadRAM)
+- **Benefits**:
+  - External memory is mapped into CPU address space
+  - Standard `malloc()` and `new` use external RAM
+  - Stack relocation eliminates overflow risks
 
 ---
-
 
 ## 🧰 Macro Summary
 
