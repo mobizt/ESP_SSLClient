@@ -12,8 +12,6 @@
 #define ESP_SSLCLIENT_VERSION_PATCH 2
 #define ESP_SSLCLIENT_VERSION "3.0.2"
 
-
-
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wvla"

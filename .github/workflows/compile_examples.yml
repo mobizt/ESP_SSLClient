@@ -22,7 +22,7 @@ jobs:
           - { name: ESP32, board: esp32dev }
         # Define the examples to compile
         example:
-          - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
+          - "examples/TLS_Upgrade/TLS_Upgrade.ino"
           - "examples/HTTPs/HTTPs.ino"
           - "examples/MQTT/MQTT.ino"
 
