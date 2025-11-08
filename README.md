@@ -40,7 +40,7 @@ Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRA
 - 🛡️ **Secure Data:** Data encryption via BearSSL (native or bundled)
 - **⬆️ Duplex Modes:** Supports **Full-Duplex** (simultaneous RX/TX) and **Half-Duplex** (sequential RX or TX) operation for advanced memory optimization.
 - 🔄 **TLS Upgrade:** Support for protocol negotiation (e.g., STARTTLS)
-- 🌟 **Supported Protocols** TLS1.0, TLS1.1, TLS1.2.
+- 🌟 **Supported Protocols:** TLS1.0, TLS1.1, and TLS1.2.
 - 🔐 **Validation:** Full Certificate validation or quick testing via `setInsecure()` mode
 - 🔁 **Runtime Flexibility:** Client switching at runtime via pointer assignment
 - 📦 **Configurable Buffers:** Adjust RX/TX buffer sizes (512–16384 bytes)
