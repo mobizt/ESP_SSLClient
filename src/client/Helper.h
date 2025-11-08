@@ -988,6 +988,24 @@ private:
     br_ssl_session_parameters _session;
 };
 
+/* The "full" profile supports all implemented cipher suites.
+ *
+ * Rationale for suite order, from most important to least
+ * important rule:
+ *
+ * -- Don't use 3DES if AES or ChaCha20 is available.
+ * -- Try to have Forward Secrecy (ECDHE suite) if possible.
+ * -- When not using Forward Secrecy, ECDH key exchange is
+ *    better than RSA key exchange (slightly more expensive on the
+ *    client, but much cheaper on the server, and it implies smaller
+ *    messages).
+ * -- ChaCha20+Poly1305 is better than AES/GCM (faster, smaller code).
+ * -- GCM is better than CCM and CBC. CCM is better than CBC.
+ * -- CCM is preferable over CCM_8 (with CCM_8, forgeries may succeed
+ *    with probability 2^(-64)).
+ * -- AES-128 is preferred over AES-256 (AES-128 is already
+ *    strong enough, and AES-256 is 40% more expensive).
+ */
 static const uint16_t suites_P[] CONST_IN_FLASH = {
 #ifndef BEARSSL_SSL_BASIC
     BR_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,

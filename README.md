@@ -22,10 +22,16 @@ Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRA
     * [📋 Requirements](#-requirements)
 4.  [🧠 Memory Usage Discrepancy Note](#-memory-usage-discrepancy-note)
 5.  [📦 Buffer Configuration Guide](#-buffer-configuration-guide)
-6.  [🧰 Macro Summary](#-macro-summary)
-7.  [🌐 Duplex Mode Guide](#-duplex-mode-guide-when-to-use-half-duplex)
-8.  [🧪 Basic Usage](#-basic-usage)
-9.  [📄 License](#-license)
+    * [🧠 Notes](#-notes)
+6.  [🧪 Basic Usage](#-basic-usage)
+7.  [🧰 API Highlights](#-api-highlights)
+8.  [🔬 Performance Profile Summary (Insecure Mode)](#-performance-profile-summary-insecure-mode)
+9.  [🧠 Memory Expansion Guide (AVR)](#-memory-expansion-guide-avr)
+10.  [🧰 Macro Summary](#-macro-summary)
+11.  [🌐 Duplex Mode Guide: When to Use Half-Duplex](#-duplex-mode-guide-when-to-use-half-duplex)
+12.  [🧪 Diagnostic Tips](#-diagnostic-tips)
+13.  [📊 Supported Algorithms](#-supported-algorithms)
+14.  [📄 License](#-license)
 
 ---
 
@@ -34,6 +40,7 @@ Supports ESP32, ESP8266, RP2040, STM32, SAMD, Teensy, and AVR (with external SRA
 - 🛡️ **Secure Data:** Data encryption via BearSSL (native or bundled)
 - **⬆️ Duplex Modes:** Supports **Full-Duplex** (simultaneous RX/TX) and **Half-Duplex** (sequential RX or TX) operation for advanced memory optimization.
 - 🔄 **TLS Upgrade:** Support for protocol negotiation (e.g., STARTTLS)
+- 🌟 **Supported Protocols** TLS1.0, TLS1.1, TLS1.2.
 - 🔐 **Validation:** Full Certificate validation or quick testing via `setInsecure()` mode
 - 🔁 **Runtime Flexibility:** Client switching at runtime via pointer assignment
 - 📦 **Configurable Buffers:** Adjust RX/TX buffer sizes (512–16384 bytes)
@@ -325,6 +332,20 @@ Define these in your main sketch or `platformio.ini` to customize the build.
 - **Check buffer sizes** if handshake fails (try increasing them, e.g., 2048/1024).
 - **Validate transport client lifetime**—ensure the client pointer you pass to `setClient()` remains valid.
 
+---
+
+## 📊 Supported Algorithms
+
+The core BearSSL implementation included in this library supports a comprehensive suite of modern and necessary cryptographic primitives:
+
+| Component | Supported Algorithms |
+| :--- | :--- |
+| **TLS Protocols** | **TLS 1.2, TLS 1.1, TLS 1.0** |
+| **Key Exchange (Kx)** | **ECDHE** (Ephemeral), **ECDH** (Static), **RSA** (Static) |
+| **Authentication (Auth)** | **ECDSA** (Elliptic Curve), **RSA** |
+| **Bulk Encryption** | **AES-128, AES-256, ChaCha20, 3DES** |
+| **Encryption Modes** | **GCM** (Galois/Counter Mode), **CCM** (Counter with CBC-MAC), **CBC** (Cipher Block Chaining) |
+| **Hash Functions** | **SHA-256, SHA-384** (Modern/Required), **SHA1, MD5** (Legacy/Compatibility) |
 ---
 
 ## 📄 License
