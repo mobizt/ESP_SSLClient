@@ -30,6 +30,7 @@ jobs:
           - { board: mkrwifi1010, name: 'mkrwifi1010 (Arduino MKR)' }
           - { board: mkr1000USB, name: 'mkr1000USB (Arduino MKR)' }
           - { board: uno_r4_wifi, name: 'uno_r4_wifi (Arduino R4)' }
+          - { board: megaatmega2560, name: 'Arduino Mega 2560' } # <-- NEW BOARD ID
           
           # --- Teensy Boards ---
           - { board: teensy41, name: 'teensy41' }
@@ -74,6 +75,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
           
+      # --- SKETCH CREATION (Updated with your code) ---
+      - name: 📝 Create minimal sketch with test code
+        if: ${{ !matrix.board_config.needs_ini }} 
+        run: |
+          mkdir -p src
+          # Write the specific test code to a .cpp file for better C++ compilation
+          cat << EOF > src/main.cpp
+          #include <Arduino.h>
+          #include <ESP_SSLClient.h>
+
+          ESP_SSLClient ssl_client;
+
+          void setup()
+          {
+              // NOTE: Library functions will be checked for existence, 
+              // but linker errors might still occur on non-ESP boards 
+              // if the library has dependencies that aren't mocked/installed.
+              ssl_client.setInsecure();
+              ssl_client.setBufferSizes(2048, 512);
+              ssl_client.connect("mock.com", 443);
+              ssl_client.stop();
+          }
+
+          void loop()
+          {
+          }
+          EOF
+
       # --- Conditional Configuration for nanorp2040connect ---
       - name: 📝 Create nanorp2040connect platformio.ini and sketch
         if: ${{ matrix.board_config.needs_ini }}
@@ -83,6 +112,7 @@ jobs:
           echo "board = nanorp2040connect" >> platformio.ini
           echo "framework = arduino" >> platformio.ini
           echo "lib_deps = WiFiNINA" >> platformio.ini
+          # Create a minimal sketch for this board (kept generic for lib_deps reasons)
           mkdir -p src
           echo "#include <Arduino.h>" >> src/main.ino
           echo "#include <SPI.h>" >> src/main.ino
@@ -93,11 +123,11 @@ jobs:
       - name: ⚙️ Run PlatformIO Compile
         run: |
           if [ "${{ matrix.board_config.needs_ini }}" = "true" ]; then
-            # Compile using the generated INI for special configuration boards
+            # Boards with specific INI configuration: source is 'src'
             pio ci --project-conf="platformio.ini" --project-option="lib_ldf_mode=chain+" src
           else
-            # Standard boards: Use current directory (.) as the source location
-            pio ci --board=${{ matrix.board_config.board }} .
+            # Standard boards: Use the 'src' folder we just created
+            pio ci --board=${{ matrix.board_config.board }} src
           fi
 
   # --- SEPARATE JOB FOR PICO W (due to custom platform URL) ---
