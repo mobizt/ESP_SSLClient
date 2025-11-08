@@ -19,8 +19,8 @@ jobs:
         board_config:
           # FQBN (VENDOR:ARCH:BOARD) | Required Core/Platform | URL (if not official)
           
-          # --- Arduino AVR/SAMD/Renesas (Official Core) ---
-          - { name: 'Arduino Mega 2560', board: 'arduino:avr:mega:cpu=atmega2560', platform: 'arduino:avr' }
+          # --- Arduino SAMD/Renesas (Official Core) ---
+          # NOTE: Arduino Mega 2560 removed due to low memory (SRAM overflow)
           - { name: 'MKR WiFi 1010', board: 'arduino:samd:mkrwifi1010', platform: 'arduino:samd' }
           - { name: 'MKR 1000 USB', board: 'arduino:samd:mkr1000', platform: 'arduino:samd' }
           - { name: 'UNO R4 WiFi', board: 'arduino:renesas_uno:unor4wifi', platform: 'arduino:renesas_uno' }
@@ -35,8 +35,8 @@ jobs:
           - { name: 'D1 Mini', board: 'esp8266:esp8266:d1_mini', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
           - { name: 'NodeMCU V2', board: 'esp8266:esp8266:nodemcuv2', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json' }
 
-          # --- STM32 (Requires Custom URL) ---
-          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://raw.githubusercontent.com/stm32duino/BoardManagerFiles/main/package_stm_index.json' }
+          # --- STM32 (Requires Custom URL - CORRECTED URL) ---
+          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stm_index.json' }
 
     name: Compile ${{ matrix.board_config.name }}
 
@@ -54,17 +54,18 @@ jobs:
         run: |
           arduino-cli config add board_manager.additional_urls ${{ matrix.board_config.url }}
           
-      # 3. Update core index and install the required platform/core
-      - name: 📥 Install Platform ${{ matrix.board_config.platform }}
-        run: |
-          arduino-cli core update-index
-          arduino-cli core install ${{ matrix.board_config.platform }}
+      # 3. Update core index
+      - name: 🔄 Update Core Index
+        run: arduino-cli core update-index
           
-      # 4. Create the test sketch containing your provided code
+      # 4. Install the required platform/core (separated from index update)
+      - name: 📥 Install Platform ${{ matrix.board_config.platform }}
+        run: arduino-cli core install ${{ matrix.board_config.platform }}
+
+      # 5. Create the test sketch containing your provided code
       - name: 📝 Create test sketch
         run: |
           mkdir -p test_sketch
-          # Your sketch, which includes the library under test
           cat << EOF > test_sketch/test_sketch.ino
           #include <ESP_SSLClient.h>
           
@@ -83,8 +84,7 @@ jobs:
           }
           EOF
 
-      # 5. Compile the sketch against the FQBN
+      # 6. Compile the sketch against the FQBN
       - name: ⚙️ Compile Sketch for ${{ matrix.board_config.name }}
-        # FIX: Use the --library flag to point the compiler to the current directory (.)
-        # This makes the library in the repository root available for compilation.
+        # Use the --library flag to point the compiler to the current directory (.)
         run: arduino-cli compile --fqbn ${{ matrix.board_config.board }} --library . test_sketch
