@@ -110,7 +110,7 @@ Therefore, while this library's core data overhead remains small and stable (e.g
 
 This table summarizes recommended buffer sizes based on duplex mode and expected payload size. Adjust these macros in your sketch or `platformio.ini` for optimal performance.
 
-| Mode         | Macro(s) Required                | RX Buffer (`STATIC_IN_BUFFER_SIZE`) | TX Buffer (`STATIC_OUT_BUFFER_SIZE`) | Notes                                                                 |
+| Mode         | Macro(s) Required                | RX Buffer | TX Buffer | Notes                                                                 |
 |--------------|----------------------------------|--------------------------------------|--------------------------------------|-----------------------------------------------------------------------|
 | **Half-Duplex** | `SSLCLIENT_HALF_DUPLEX`          | 2048–16709 bytes                     | *Ignored*                            | RX buffer used for both directions. Ideal for HTTP/1.1 and low-RAM boards. |
 | **Full-Duplex** | *(default)*                     | 2048–16384 bytes                     | 512–16469 bytes                      | Separate buffers for RX and TX. Required for streaming or pipelined protocols. |
