@@ -28,9 +28,9 @@ jobs:
           # --- ESP8266 (Requires Custom URL) ---
           - { name: 'D1 Mini', board: 'esp8266:esp8266:d1_mini', platform: 'esp8266:esp8266', url: 'https://arduino.esp8266.com/stable/package_esp8266com_index.json', category: 'standard' }
 
-          # --- STM32 (Isolated/Direct Install) ---
-          # We no longer rely on the URL for index lookup; it's a category flag now.
-          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', category: 'stm32' }
+          # --- STM32 (Isolated/Direct Install - URL Updated) ---
+          # Using the commonly successful GitHub BoardManagerFiles URL format.
+          - { name: 'Nucleo F401RE', board: 'STM32:stm32:Nucleo_F401RE', platform: 'STM32:stm32', url: 'https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stm_index.json', category: 'stm32' }
 
     name: Compile ${{ matrix.board_config.name }}
 
@@ -45,26 +45,26 @@ jobs:
       # 2. Add custom platform URLs for ESP and update index
       - name: 🌐 Configure & Update Index
         run: |
-          # Add URLs for non-standard cores (ESP)
+          # Add URLs for non-standard cores (ESP and STM32)
           arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           arduino-cli config add board_manager.additional_urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+          arduino-cli config add board_manager.additional_urls https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stm_index.json # <-- STM32 URL ADDED TO GLOBAL CONFIG
           # Run update once
           arduino-cli core update-index
           
-      # 3. FIX: Dedicated STM32 Direct Core Install
-      # This step completely bypasses the index look-up error by installing a core 
-      # from a known-good archived release file.
-      - name: 📥 Install STM32 Platform (Direct URL Fix)
+      # 3. FIX: Install STM32 Platform (Direct Index Access)
+      - name: 📥 Install STM32 Platform
         if: ${{ matrix.board_config.category == 'stm32' }}
         run: |
-          # Use a direct core installation command with a reliable core archive link.
-          # This should prevent the 404/Connection Refused errors.
+          # The URL was added to the config in step 2. Now we install the platform.
+          # We use the --additional-urls flag here as a redundancy measure just in case.
           arduino-cli core install ${{ matrix.board_config.platform }} --additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/master/package_stm_index.json
 
       # 4. Install All Other Platforms (ESP, Arduino)
       - name: 📥 Install Other Platforms
         if: ${{ matrix.board_config.category != 'stm32' }}
         run: |
+          # Platforms can be installed now that the global index has been updated
           arduino-cli core install ${{ matrix.board_config.platform }}
           
       # 5. Create the test sketch containing your provided code
