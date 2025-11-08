@@ -33,7 +33,7 @@ jobs:
           
           # --- Teensy Boards ---
           - { board: teensy41, name: 'teensy41' }
-          - { board: teensy31, name: 'teensy32' } # Represents Teensy 3.1/3.2
+          - { board: teensy31, name: 'teensy32' }
 
           # --- STM32 Boards ---
           - { board: bluepill_f103c8_128k, name: 'bluepill_f103c8 (STM32F1)' } 
@@ -96,8 +96,8 @@ jobs:
             # Compile using the generated INI for special configuration boards
             pio ci --project-conf="platformio.ini" --project-option="lib_ldf_mode=chain+" src
           else
-            # Standard library compile command (relies on default pio ci behavior)
-            pio ci --board=${{ matrix.board_config.board }}
+            # Standard boards: Use current directory (.) as the source location
+            pio ci --board=${{ matrix.board_config.board }} .
           fi
 
   # --- SEPARATE JOB FOR PICO W (due to custom platform URL) ---
