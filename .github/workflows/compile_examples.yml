@@ -11,94 +11,71 @@ on:
       - '.github/workflows/compile_library.yml'
 
 jobs:
-  esp8266:
+  compile_examples:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        example: 
-        - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
-        - "examples/HTTPs/HTTPs.ino"
-        - "examples/MQTT/MQTT.ino"
+        # Define the target platforms and their PlatformIO boards
+        platform:
+          - { name: ESP8266, board: d1_mini }
+          - { name: ESP32, board: esp32dev }
+        # Define the examples to compile
+        example:
+          - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
+          - "examples/HTTPs/HTTPs.ino"
+          - "examples/MQTT/MQTT.ino"
+
+    # Display the current platform and example in the job name
+    name: ${{ matrix.platform.name }} / ${{ matrix.example }}
+
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
-        
-    - name: Install library
-      run: | 
-        pio lib -g install \
-        https://github.com/mobizt/ESP_SSLClient
-        pio lib install \
-        https://github.com/arduino-libraries/ArduinoMqttClient
-        
-    - name: update library
-      run: |
-        pio lib --global update
+      - name: ⬇️ Checkout Repository
+        # Updated to v4
+        uses: actions/checkout@v4
 
-    - name: Run PlatformIO Examples
-      run: |
-        pio ci --board=d1_mini
-      env:
-        PLATFORMIO_CI_SRC: ${{ matrix.example }}
+      # --- Caching ---
+      - name: 💾 Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
-  esp32:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        example: 
-        - "examples/HTTP_Upgrade/HTTP_Upgrade.ino"
-        - "examples/HTTPs/HTTPs.ino"
-        - "examples/MQTT/MQTT.ino"
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      - name: 💾 Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          # Changed key to be based on the platform name for more targeted caching
+          key: ${{ runner.os }}-${{ matrix.platform.name }}-${{ hashFiles('**/lockfiles') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.platform.name }}-
 
-    - name: Install library
-      run: | 
-        pio lib -g install \
-        https://github.com/mobizt/ESP_SSLClient
-        pio lib install \
-        https://github.com/arduino-libraries/ArduinoMqttClient
-        
-    - name: update library
-      run: |
-        pio lib --global update
+      # --- Setup ---
+      - name: 🐍 Set up Python
+        # Updated to v5
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Run PlatformIO Examples
-      run: |
-        pio ci --board=esp32dev
-      env:
-        PLATFORMIO_CI_SRC: ${{ matrix.example }}
+      - name: 🛠️ Install PlatformIO
+        # Combined pip upgrade and platformio install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      # --- Dependencies ---
+      - name: 📥 Install Required Libraries
+        # Combined install/update into a single step.
+        # Note: If ESP_SSLClient is the library under test, installing it globally (-g) 
+        # is a standard practice for CI testing.
+        run: |
+          pio lib -g install https://github.com/mobizt/ESP_SSLClient
+          pio lib install https://github.com/arduino-libraries/ArduinoMqttClient
+
+      # --- Compile ---
+      - name: ⚙️ Run PlatformIO Compile
+        run: |
+          pio ci --board=${{ matrix.platform.board }}
+        env:
+          # Use the example path from the matrix
+          PLATFORMIO_CI_SRC: ${{ matrix.example }}

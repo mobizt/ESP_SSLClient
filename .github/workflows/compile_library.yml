@@ -13,131 +13,140 @@ on:
       - 'examples/**'
 
 jobs:
+  # --- CONSOLIDATED JOB FOR MOST BOARDS ---
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        board: 
-          - "d1_mini"
-          - "nodemcuv2"
-          - "esp32dev"
-          - "lolin32"
-          - "mkrwifi1010"
-          - "bluepill_f103c8_128k"
-          - "mkr1000USB"
-          - "teensy41"
-          - "uno_r4_wifi"
+        board_config:
+          # --- ESP/Arduino Boards ---
+          - { board: d1_mini, name: 'd1_mini (ESP8266)' }
+          - { board: nodemcuv2, name: 'nodemcuv2 (ESP8266)' }
+          - { board: esp32dev, name: 'esp32dev (ESP32)' }
+          - { board: lolin32, name: 'lolin32 (ESP32)' }
+          - { board: esp32-s3-devkitc-1, name: 'esp32-s3-devkitc-1 (ESP32-S3)' }
+          - { board: esp32-c3-devkitc-02, name: 'esp32-c3-devkitc-02 (ESP32-C3)' }
+          - { board: mkrwifi1010, name: 'mkrwifi1010 (Arduino MKR)' }
+          - { board: mkr1000USB, name: 'mkr1000USB (Arduino MKR)' }
+          - { board: uno_r4_wifi, name: 'uno_r4_wifi (Arduino R4)' }
+          
+          # --- Teensy Boards ---
+          - { board: teensy41, name: 'teensy41' }
+          - { board: teensy31, name: 'teensy32' } # Represents Teensy 3.1/3.2
+
+          # --- STM32 Boards ---
+          - { board: bluepill_f103c8_128k, name: 'bluepill_f103c8 (STM32F1)' } 
+          - { board: nucleo_f401re, name: 'nucleo_f401re (STM32F4 Nucleo)' }
+          
+          # --- RP2040 Board (Requires Configuration) ---
+          - { board: nanorp2040connect, name: 'nanorp2040connect', needs_ini: true }
+    
+    name: Build ${{ matrix.board_config.name }}
+
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
+      - name: ⬇️ Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      # --- Caching ---
+      - name: 💾 Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
 
+      - name: 💾 Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-${{ matrix.board_config.name }}-${{ hashFiles('**/lockfiles') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.board_config.name }}-
 
-    - name: Create main file
-      run: |
-        echo "#include <Arduino.h>" >> src/main.ino
-        echo "void setup() {}" >> src/main.ino
-        echo "void loop() {}" >> src/main.ino
+      # --- Setup ---
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-    - name: Run PlatformIO
-      run: pio ci --board=${{ matrix.board }} src
+      - name: 🛠️ Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+          
+      # --- Conditional Configuration for nanorp2040connect ---
+      - name: 📝 Create nanorp2040connect platformio.ini and sketch
+        if: ${{ matrix.board_config.needs_ini }}
+        run: |
+          echo "[env:nanorp2040connect]" >> platformio.ini
+          echo "platform = raspberrypi" >> platformio.ini
+          echo "board = nanorp2040connect" >> platformio.ini
+          echo "framework = arduino" >> platformio.ini
+          echo "lib_deps = WiFiNINA" >> platformio.ini
+          mkdir -p src
+          echo "#include <Arduino.h>" >> src/main.ino
+          echo "#include <SPI.h>" >> src/main.ino
+          echo "void setup() {}" >> src/main.ino
+          echo "void loop() {}" >> src/main.ino
 
-  nanorp2040connect:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-    steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      # --- Compile ---
+      - name: ⚙️ Run PlatformIO Compile
+        run: |
+          if [ "${{ matrix.board_config.needs_ini }}" = "true" ]; then
+            # Compile using the generated INI for special configuration boards
+            pio ci --project-conf="platformio.ini" --project-option="lib_ldf_mode=chain+" src
+          else
+            # Standard library compile command (relies on default pio ci behavior)
+            pio ci --board=${{ matrix.board_config.board }}
+          fi
 
-    - name: Create main file
-      run: |
-        echo "#include <Arduino.h>" >> src/main.ino
-        echo "#include <SPI.h>" >> src/main.ino
-        echo "void setup() {}" >> src/main.ino
-        echo "void loop() {}" >> src/main.ino
-        echo "[env:nanorp2040connect]" >> platformio.ini
-        echo "platform = raspberrypi" >> platformio.ini
-        echo "board = nanorp2040connect" >> platformio.ini
-        echo "framework = arduino" >> platformio.ini
-        echo "lib_deps = WiFiNINA" >> platformio.ini
-
-    - name: Run PlatformIO
-      run: pio ci --project-conf="platformio.ini" --project-option="lib_ldf_mode=chain+" src
-
-
+  # --- SEPARATE JOB FOR PICO W (due to custom platform URL) ---
   picow:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
+    name: Build Pico W (Custom Platform)
     steps:
-    - uses: actions/checkout@v2
-    - name: Cache pip
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
-    - name: Cache PlatformIO
-      uses: actions/cache@v4
-      with:
-        path: ~/.platformio
-        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install PlatformIO
-      run: |
-        python -m pip install --upgrade pip
-        pip install --upgrade platformio
+      - uses: actions/checkout@v4
+      
+      # Caching steps
+      - name: 💾 Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
+      - name: 💾 Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-picow-${{ hashFiles('**/lockfiles') }}
+          restore-keys: ${{ runner.os }}-picow-
+          
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          
+      - name: 🛠️ Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
 
-    - name: Create main file
-      run: |
-        echo "#include <Arduino.h>" >> src/main.ino
-        echo "#include <LwipEthernet.h>" >> src/main.ino
-        echo "void setup() {}" >> src/main.ino
-        echo "void loop() {}" >> src/main.ino
-        echo "[env:rpipicow]" >> platformio.ini
-        echo "platform = https://github.com/maxgerhardt/platform-raspberrypi.git" >> platformio.ini
-        echo "board = rpipicow" >> platformio.ini
-        echo "framework = arduino" >> platformio.ini
-        echo "board_build.core = earlephilhower" >> platformio.ini
-        echo "board_build.filesystem_size = 1m" >> platformio.ini
+      - name: 📝 Create Pico W platformio.ini and sketch
+        run: |
+          # Create the platformio.ini with the custom platform URL
+          echo "[env:rpipicow]" >> platformio.ini
+          echo "platform = https://github.com/maxgerhardt/platform-raspberrypi.git" >> platformio.ini
+          echo "board = rpipicow" >> platformio.ini
+          echo "framework = arduino" >> platformio.ini
+          echo "board_build.core = earlephilhower" >> platformio.ini
+          echo "board_build.filesystem_size = 1m" >> platformio.ini
+          # Create a minimal sketch
+          mkdir -p src
+          echo "#include <Arduino.h>" >> src/main.ino
+          echo "#include <LwipEthernet.h>" >> src/main.ino
+          echo "void setup() {}" >> src/main.ino
+          echo "void loop() {}" >> src/main.ino
 
-
-    - name: Run PlatformIO
-      run: pio ci --project-conf="platformio.ini" src
- 
+      - name: ⚙️ Run PlatformIO Compile
+        # Compile using the generated INI
+        run: pio ci --project-conf="platformio.ini" src
