@@ -262,7 +262,7 @@ By allowing the debug and the debug information string by defining ENABLE_DEBUG 
 
 | Platform | RAM Usage | Flash Usage | Notes |
 | :--- | :--- | :--- | :--- |
-| **ESP32** | 15.1% (48.46 KB) | 75.3% (964.2 KB) | **Highly Efficient.** The aggressive static allocation provides performance stability, though dynamic allocation (if memory fragmentation is managed) remains viable on this platform. |
+| **ESP32 (Arduino Core v3.3.3)** | 15.1% (48.46 KB) | 75.3% (964.2 KB) | **Highly Efficient.** The aggressive static allocation provides performance stability, though dynamic allocation (if memory fragmentation is managed) remains viable on this platform. |
 | **ESP8266 (Wemos D1)** | 42.6% (34.1 KB) | 34.2% (348.37 KB) | **RAM Conscious.** The static/insecure configuration is crucial here, reserving adequate free RAM for the heap and network stack. |
 | **RP2040 Pico W** | 29.1% (74.6 KB) | 16% (162.92 KB) | **Excellent Performance.** Even with static reservation, ample resources remain. The configuration ensures deterministic memory usage. |
 | **Nano RP2040 Connect** | 18.3% (46.8 KB) | 0.2% (4.09 KB) | **Minimal Flash Footprint.** The tiny flash usage figure suggests effective removal of unnecessary code sections by the linker. |
