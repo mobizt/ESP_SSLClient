@@ -190,7 +190,7 @@ namespace key_bssl
         switch (pk->key_type)
         {
         case BR_KEYTYPE_RSA:
-            // (RSA allocation and copy logic, lines 219-232)
+            // (RSA allocation and copy logic)
             ta->pkey.key_type = BR_KEYTYPE_RSA;
             ta->pkey.key.rsa.n = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.nlen));
             ta->pkey.key.rsa.e = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.elen));
@@ -208,7 +208,7 @@ namespace key_bssl
             break;
 
         case BR_KEYTYPE_EC:
-            // (EC allocation and copy logic, lines 234-243)
+            // (EC allocation and copy logic)
             ta->pkey.key_type = BR_KEYTYPE_EC;
             ta->pkey.key.ec.curve = pk->key.ec.curve;
             ta->pkey.key.ec.q = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.ec.qlen));
