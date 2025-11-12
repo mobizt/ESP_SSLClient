@@ -1,25 +1,12 @@
-
-/*
-  WiFiClientBearSSL- SSL client/server for esp8266 using BearSSL libraries
-  - Mostly compatible with Arduino WiFi shield library and standard
-    WiFiClient/ServerSecure (except for certificate handling).
-
-  Copyright (c) 2018 Earle F. Philhower, III
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
-
-  This library is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
-
-  You should have received a copy of the GNU Lesser General Public
-  License along with this library; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*/
+/**
+ * This work is STL free and based on  Earle F. Philhower ESP8266 WiFiClientSecure helper functions.
+ * 
+ * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
+ *
+ * SPDX-License-Identifier: MIT
+ * 
+ * Copyright (c) 2018 Earle F. Philhower, III
+ */
 #ifndef BSSL_HELPER_H
 #define BSSL_HELPER_H
 
@@ -146,15 +133,15 @@ namespace key_bssl
 
     static bool certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, const br_x509_certificate *xc)
     {
-        // Replace std::unique_ptr with manual allocation/cleanup (RAW POINTER)
-        br_x509_decoder_context *dc =
-            reinterpret_cast<br_x509_decoder_context *>(esp_sslclient_malloc(sizeof(br_x509_decoder_context)));
+
+        br_x509_decoder_context *dc =reinterpret_cast<br_x509_decoder_context *>(esp_sslclient_malloc(sizeof(br_x509_decoder_context)));
 
         if (!dc)
             return false; // OOM check on context allocation
 
-        DynBuffer vdn_buffer;
-        br_x509_pkey *pk = nullptr; // Raw pointer for the public key structure
+        DynBuffer vdn_buffer; // Temporary buffer where the DN data is collected
+        br_x509_pkey *pk = nullptr; 
+        bool success = false; // Status flag
 
         // Ensure Trust Anchor is clean before starting
         memset(ta, 0, sizeof(*ta));
@@ -165,78 +152,88 @@ namespace key_bssl
         // Check for decoding error before getting the key
         if (br_x509_decoder_last_error(dc) != 0)
         {
-            esp_sslclient_free(&dc);
-            free_dyn_buffer(&vdn_buffer);
-            return false;
+            // Decoding error occurred
+            goto cleanup;
         }
 
         pk = br_x509_decoder_get_pkey(dc);
 
-        // Explicit cleanup of the decoder context
-        esp_sslclient_free(&dc);
-
         if (pk == nullptr)
         {
-            free_dyn_buffer(&vdn_buffer);
-            return false; // No key present
+            // No key present
+            goto cleanup; 
         }
 
-        // --- Transfer Parsed Data ---
-
-        // ta->dn.data takes ownership of the buffer data allocated inside byte_vector_append.
-        ta->dn.data = vdn_buffer.data;
-        ta->dn.len = vdn_buffer.len;
-
-        // Since ta takes ownership, reset the DynBuffer structure pointers (prevent double free later)
-        vdn_buffer.data = nullptr;
-
-        if (!ta->dn.data)
+        // Copy Parsed DN Data (Matching original STL code's logic)
+        // This is where the correction is applied: COPY the data instead of transferring the buffer itself.
+        if (vdn_buffer.len > 0)
         {
-            // If the buffer was somehow empty or allocation failed in byte_vector_append
-            return false;
+            ta->dn.data = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(vdn_buffer.len));
+            if (!ta->dn.data)
+            {
+                // OOM on DN copy
+                goto cleanup; 
+            }
+            memcpy(ta->dn.data, vdn_buffer.data, vdn_buffer.len);
+            ta->dn.len = vdn_buffer.len;
+        } else {
+             ta->dn.data = nullptr; // Ensure null if DN is empty
+             ta->dn.len = 0;
         }
 
         ta->flags = 0;
         if (br_x509_decoder_isCA(dc))
             ta->flags |= BR_X509_TA_CA;
 
-        // --- Extract and Copy Public Key (Standard C-style logic is retained) ---
+        // Extract and Copy Public Key (Standard C-style logic is retained)
+        // (Existing key copy logic remains here)
         switch (pk->key_type)
         {
         case BR_KEYTYPE_RSA:
-            // ... (RSA key allocation and copy logic, as seen in original code) ...
+            // (RSA allocation and copy logic, lines 219-232)
             ta->pkey.key_type = BR_KEYTYPE_RSA;
             ta->pkey.key.rsa.n = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.nlen));
             ta->pkey.key.rsa.e = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.elen));
             if ((ta->pkey.key.rsa.n == nullptr) || (ta->pkey.key.rsa.e == nullptr))
             {
-                free_ta_contents(ta); // OOM, so clean up
-                return false;
+                // OOM, so clean up DN data allocated above
+                free_ta_contents(ta); 
+                goto cleanup;
             }
             memcpy(ta->pkey.key.rsa.n, pk->key.rsa.n, pk->key.rsa.nlen);
             ta->pkey.key.rsa.nlen = pk->key.rsa.nlen;
             memcpy(ta->pkey.key.rsa.e, pk->key.rsa.e, pk->key.rsa.elen);
             ta->pkey.key.rsa.elen = pk->key.rsa.elen;
-            return true;
+            success = true;
+            break;
 
         case BR_KEYTYPE_EC:
-            // ... (EC key allocation and copy logic, as seen in original code) ...
+            // (EC allocation and copy logic, lines 234-243)
             ta->pkey.key_type = BR_KEYTYPE_EC;
             ta->pkey.key.ec.curve = pk->key.ec.curve;
             ta->pkey.key.ec.q = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.ec.qlen));
             if (ta->pkey.key.ec.q == nullptr)
             {
-                free_ta_contents(ta); // OOM, so clean up
-                return false;
+                // OOM, so clean up DN data allocated above
+                free_ta_contents(ta); 
+                goto cleanup;
             }
             memcpy(ta->pkey.key.ec.q, pk->key.ec.q, pk->key.ec.qlen);
             ta->pkey.key.ec.qlen = pk->key.ec.qlen;
-            return true;
+            success = true;
+            break;
 
         default:
-            free_ta_contents(ta); // Unknown key type
-            return false;
+            free_ta_contents(ta); // Unknown key type, clean up DN
+            goto cleanup;
         }
+
+    cleanup:
+        // Explicit cleanup of the decoder context and the temporary buffer
+        esp_sslclient_free(&dc);
+        free_dyn_buffer(&vdn_buffer); 
+        
+        return success;
     }
 
     br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)

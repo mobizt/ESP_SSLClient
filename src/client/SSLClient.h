@@ -1514,9 +1514,12 @@ private:
         _iobuf_out = reinterpret_cast<unsigned char *>(esp_sslclient_malloc(_iobuf_out_size));
 #endif
 
-#define NEED_OOM_CHECK (!defined(STATIC_IN_BUFFER_SIZE) || !defined(STATIC_OUT_BUFFER_SIZE) || !defined(STATIC_SSLCLIENT_CONTEXT))
+#if (!defined(STATIC_IN_BUFFER_SIZE) || !defined(STATIC_OUT_BUFFER_SIZE) || !defined(STATIC_SSLCLIENT_CONTEXT))
+#define NEED_OOM_CHECK
+#endif
 
-#if NEED_OOM_CHECK
+#if defined(NEED_OOM_CHECK)
+
         if (
 #if !defined(STATIC_SSLCLIENT_CONTEXT)
             !sc_ptr

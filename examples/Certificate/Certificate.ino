@@ -64,7 +64,7 @@ WiFiMulti multi;
 void setup()
 {
     Serial.begin(115200);
-    
+
     Serial.print("ESP_Client version ");
     Serial.println(ESP_SSLCLIENT_VERSION);
 
@@ -163,6 +163,7 @@ void loop()
         ssl_client.print("POST /api/users HTTP/1.1\r\n");
         ssl_client.print("Host: reqres.in\r\n");
         ssl_client.print("Content-Type: application/json\r\n");
+        ssl_client.print("x-api-key: reqres-free-v1\r\n");
         ssl_client.print("Content-Length: ");
         ssl_client.print(payload.length());
         ssl_client.print("\r\n\r\n");
