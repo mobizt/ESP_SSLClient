@@ -1,6 +1,6 @@
 {
-  "name": "ESP_SSLClient",
-  "version": "3.0.3",
+  "name": "SerialTCPClient",
+  "version": "3.0.4",
   "keywords": "TLS, SSL, SecureClient, communication, HTTPS, REST, MQTT, ESP32, ESP8266, RP2040, memory-efficient",
   "description": "A versatile and memory-optimized library providing Secure Layer Networking (SSL/TLS) TCP Client functionality. It is designed to work across a wide range of Arduino architectures (ESP32, ESP8266, RP2040, Teensy, SAMD, etc.) by wrapping standard network interfaces like WiFiClient and EthernetClient. Features include protocol upgrade (plain TCP to TLS), session caching, and memory-saving build modes.",
   "repository": {

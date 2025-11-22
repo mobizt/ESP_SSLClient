@@ -1,10 +1,10 @@
 /**
  * This work is STL free and based on  Earle F. Philhower ESP8266 WiFiClientSecure helper functions.
- * 
+ *
  * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
  *
  * SPDX-License-Identifier: MIT
- * 
+ *
  * Copyright (c) 2018 Earle F. Philhower, III
  */
 #ifndef BSSL_HELPER_H
@@ -89,13 +89,13 @@ namespace key_bssl
     };
 
     // Forward definitions
-    void free_ta_contents(br_x509_trust_anchor *ta);
-    void free_public_key(public_key *pk);
-    void free_private_key(private_key *sk);
-    bool looks_like_DER(const unsigned char *buf, size_t len);
-    pem_object *decode_pem(const void *src, size_t len, size_t *num);
-    void free_pem_object_contents(pem_object *po);
-    char *strdupImpl(const char *s);
+    static void free_ta_contents(br_x509_trust_anchor *ta);
+    static void free_public_key(public_key *pk);
+    static void free_private_key(private_key *sk);
+    static bool looks_like_DER(const unsigned char *buf, size_t len);
+    static pem_object *decode_pem(const void *src, size_t len, size_t *num);
+    static void free_pem_object_contents(pem_object *po);
+    static char *strdupImpl(const char *s);
 
     // Used as callback multiple places to append a string to a vector
     static void byte_vector_append(void *ctx, const void *buff, size_t len)
@@ -134,13 +134,13 @@ namespace key_bssl
     static bool certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, const br_x509_certificate *xc)
     {
 
-        br_x509_decoder_context *dc =reinterpret_cast<br_x509_decoder_context *>(esp_sslclient_malloc(sizeof(br_x509_decoder_context)));
+        br_x509_decoder_context *dc = reinterpret_cast<br_x509_decoder_context *>(esp_sslclient_malloc(sizeof(br_x509_decoder_context)));
 
         if (!dc)
             return false; // OOM check on context allocation
 
         DynBuffer vdn_buffer; // Temporary buffer where the DN data is collected
-        br_x509_pkey *pk = nullptr; 
+        br_x509_pkey *pk = nullptr;
         bool success = false; // Status flag
 
         // Ensure Trust Anchor is clean before starting
@@ -161,7 +161,7 @@ namespace key_bssl
         if (pk == nullptr)
         {
             // No key present
-            goto cleanup; 
+            goto cleanup;
         }
 
         // Copy Parsed DN Data (Matching original STL code's logic)
@@ -172,13 +172,15 @@ namespace key_bssl
             if (!ta->dn.data)
             {
                 // OOM on DN copy
-                goto cleanup; 
+                goto cleanup;
             }
             memcpy(ta->dn.data, vdn_buffer.data, vdn_buffer.len);
             ta->dn.len = vdn_buffer.len;
-        } else {
-             ta->dn.data = nullptr; // Ensure null if DN is empty
-             ta->dn.len = 0;
+        }
+        else
+        {
+            ta->dn.data = nullptr; // Ensure null if DN is empty
+            ta->dn.len = 0;
         }
 
         ta->flags = 0;
@@ -197,7 +199,7 @@ namespace key_bssl
             if ((ta->pkey.key.rsa.n == nullptr) || (ta->pkey.key.rsa.e == nullptr))
             {
                 // OOM, so clean up DN data allocated above
-                free_ta_contents(ta); 
+                free_ta_contents(ta);
                 goto cleanup;
             }
             memcpy(ta->pkey.key.rsa.n, pk->key.rsa.n, pk->key.rsa.nlen);
@@ -215,7 +217,7 @@ namespace key_bssl
             if (ta->pkey.key.ec.q == nullptr)
             {
                 // OOM, so clean up DN data allocated above
-                free_ta_contents(ta); 
+                free_ta_contents(ta);
                 goto cleanup;
             }
             memcpy(ta->pkey.key.ec.q, pk->key.ec.q, pk->key.ec.qlen);
@@ -231,12 +233,12 @@ namespace key_bssl
     cleanup:
         // Explicit cleanup of the decoder context and the temporary buffer
         esp_sslclient_free(&dc);
-        free_dyn_buffer(&vdn_buffer); 
-        
+        free_dyn_buffer(&vdn_buffer);
+
         return success;
     }
 
-    br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
+    static br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
     {
         br_x509_trust_anchor *ta = reinterpret_cast<br_x509_trust_anchor *>(esp_sslclient_malloc(sizeof(br_x509_trust_anchor)));
         if (!ta)
@@ -250,7 +252,7 @@ namespace key_bssl
         return ta;
     }
 
-    void free_ta_contents(br_x509_trust_anchor *ta)
+    static void free_ta_contents(br_x509_trust_anchor *ta)
     {
         if (ta)
         {
@@ -271,7 +273,7 @@ namespace key_bssl
     // Basically tries to verify the length of all included segments
     // matches the length of the input buffer.  Does not actually
     // validate any contents.
-    bool looks_like_DER(const unsigned char *buff, size_t len)
+    static bool looks_like_DER(const unsigned char *buff, size_t len)
     {
         if (len < 2)
             return false;
@@ -303,7 +305,7 @@ namespace key_bssl
         }
     }
 
-    void free_pem_object_contents(pem_object *po)
+    static void free_pem_object_contents(pem_object *po)
     {
         if (po)
         {
@@ -312,7 +314,7 @@ namespace key_bssl
         }
     }
 
-    char *strdupImpl(const char *s)
+    static char *strdupImpl(const char *s)
     {
         size_t slen = strlen(s);
         char *result = reinterpret_cast<char *>(esp_sslclient_malloc(slen + 1));
@@ -351,7 +353,7 @@ namespace key_bssl
     // Converts a PEM (~=base64) source into a set of DER-encoded binary blobs.
     // Each blob is named by the ---- BEGIN xxx ---- field, and multiple
     // blobs may be returned.
-    key_bssl::pem_object *decode_pem(const void *src, size_t len, size_t *num)
+    static key_bssl::pem_object *decode_pem(const void *src, size_t len, size_t *num)
     {
         // Replace std::unique_ptr with manual pointer
         br_pem_decoder_context *pc = nullptr;
@@ -500,7 +502,7 @@ namespace key_bssl
         return nullptr;
     }
 
-    void free_certificates(br_x509_certificate *certs, size_t num)
+    static void free_certificates(br_x509_certificate *certs, size_t num)
     {
         if (certs)
         {
@@ -512,7 +514,7 @@ namespace key_bssl
         }
     }
 
-    void free_pem_object(pem_object *pos)
+    static void free_pem_object(pem_object *pos)
     {
         if (pos != nullptr)
         {
@@ -529,7 +531,7 @@ namespace key_bssl
     // Assuming pem_object, free_pem_object, key_bssl::free_certificates, and key_bssl::read_certificates
     // are defined (or used) elsewhere.
 
-    br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
+    static br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
     {
         br_x509_certificate *cert_array = nullptr;
         size_t cert_count = 0;
@@ -740,7 +742,7 @@ namespace key_bssl
         return nullptr;
     }
 
-    void free_public_key(public_key *pk)
+    static void free_public_key(public_key *pk)
     {
         if (pk)
         {
@@ -865,7 +867,7 @@ namespace key_bssl
         }
         return nullptr;
     }
-    void free_private_key(private_key *sk)
+    static void free_private_key(private_key *sk)
     {
         if (sk)
         {
@@ -889,7 +891,7 @@ namespace key_bssl
         }
     }
 
-    private_key *read_private_key(const char *buff, size_t len)
+    static private_key *read_private_key(const char *buff, size_t len)
     {
         private_key *sk = nullptr;
         pem_object *pos = nullptr;
@@ -920,7 +922,7 @@ namespace key_bssl
         return nullptr;
     }
 
-    public_key *read_public_key(const char *buff, size_t len)
+    static public_key *read_public_key(const char *buff, size_t len)
     {
         public_key *pk = nullptr;
         pem_object *pos = nullptr;
