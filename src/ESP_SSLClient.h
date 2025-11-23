@@ -9,8 +9,8 @@
 
 #define ESP_SSLCLIENT_VERSION_MAJOR 3
 #define ESP_SSLCLIENT_VERSION_MINOR 0
-#define ESP_SSLCLIENT_VERSION_PATCH 4
-#define ESP_SSLCLIENT_VERSION "3.0.4"
+#define ESP_SSLCLIENT_VERSION_PATCH 5
+#define ESP_SSLCLIENT_VERSION "3.0.5"
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
