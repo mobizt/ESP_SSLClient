@@ -517,9 +517,9 @@ public:
         mFreeSSL();
     }
 
-    void setTimeout(unsigned int timeoutMs) { _timeout_ms = timeoutMs; }
+    void setTimeout(unsigned long timeoutMs) { _timeout_ms = timeoutMs; }
 
-    void setHandshakeTimeout(unsigned int timeoutMs) { _handshake_timeout = timeoutMs; }
+    void setHandshakeTimeout(unsigned long timeoutMs) { _handshake_timeout = timeoutMs; }
 
     void setSessionTimeout(uint32_t seconds) { _tcp_session_timeout = seconds; }
 
@@ -799,7 +799,7 @@ public:
     }
 
 #if !defined(__AVR__)
-    bool setCiphers(const std::vector<uint16_t> &list) { return setCiphers(&list[0], list.size()); }
+    bool setCiphers(const Vector<uint16_t> &list) { return setCiphers(&list[0], list.size()); }
 #endif
 
     bool setCiphersLessSecure() { return setCiphers(faster_suites_P, sizeof(faster_suites_P) / sizeof(faster_suites_P[0])); }
@@ -1370,7 +1370,7 @@ private:
             ret = probe->readBytes(lenBytes, 2);
             handLen -= 2;
             uint16_t _extLen = lenBytes[1] | (lenBytes[0] << 8);
-            if ((ret != 2) || (handLen <= 0) || (_extLen > 32) || (_extLen > handLen))
+            if ((ret != 2) || (handLen <= 0) || (_extLen > 32) || ((int)_extLen > handLen))
             {
                 return send_abort(probe, supportsLen);
             }
@@ -1383,7 +1383,7 @@ private:
             uint8_t junk[32];
             ret = probe->readBytes(junk, _extLen);
             handLen -= _extLen;
-            if (ret != _extLen)
+            if (ret != (int)_extLen)
             {
                 return send_abort(probe, supportsLen);
             }

@@ -502,7 +502,7 @@ public:
      * @param list The vector containing 16-bit cipher suite identifiers.
      * @return True on success.
      */
-    bool setCiphers(const std::vector<uint16_t> &list) { return _ssl_client.setCiphers(list); }
+    bool setCiphers(const Vector<uint16_t> &list) { return _ssl_client.setCiphers(list); }
 #endif
 
 #endif // !SSLCLIENT_INSECURE_ONLY

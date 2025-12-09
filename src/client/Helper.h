@@ -1,12 +1,25 @@
-/**
- * This work is STL free and based on  Earle F. Philhower ESP8266 WiFiClientSecure helper functions.
- *
- * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
- *
- * SPDX-License-Identifier: MIT
- *
- * Copyright (c) 2018 Earle F. Philhower, III
- */
+
+/*
+  WiFiClientBearSSL- SSL client/server for esp8266 using BearSSL libraries
+  - Mostly compatible with Arduino WiFi shield library and standard
+    WiFiClient/ServerSecure (except for certificate handling).
+
+  Copyright (c) 2018 Earle F. Philhower, III
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 #ifndef BSSL_HELPER_H
 #define BSSL_HELPER_H
 
@@ -48,16 +61,8 @@
 #endif
 
 #elif defined(BSSL_BUILD_INTERNAL_CORE) && !defined(SSLCLIENT_INSECURE_ONLY)
-
 namespace key_bssl
 {
-    struct DynBuffer
-    {
-        uint8_t *data = nullptr;
-        size_t len = 0;
-        size_t capacity = 0;
-    };
-
     class private_key
     {
     public:
@@ -89,156 +94,91 @@ namespace key_bssl
     };
 
     // Forward definitions
-    static void free_ta_contents(br_x509_trust_anchor *ta);
-    static void free_public_key(public_key *pk);
-    static void free_private_key(private_key *sk);
-    static bool looks_like_DER(const unsigned char *buf, size_t len);
-    static pem_object *decode_pem(const void *src, size_t len, size_t *num);
-    static void free_pem_object_contents(pem_object *po);
-    static char *strdupImpl(const char *s);
+    void free_ta_contents(br_x509_trust_anchor *ta);
+    void free_public_key(public_key *pk);
+    void free_private_key(private_key *sk);
+    bool looks_like_DER(const unsigned char *buf, size_t len);
+    pem_object *decode_pem(const void *src, size_t len, size_t *num);
+    void free_pem_object_contents(pem_object *po);
+    char *strdupImpl(const char *s);
 
     // Used as callback multiple places to append a string to a vector
     static void byte_vector_append(void *ctx, const void *buff, size_t len)
     {
-        DynBuffer *db = static_cast<DynBuffer *>(ctx);
-        size_t new_len = db->len + len;
-
-        if (new_len > db->capacity)
+        Vector<uint8_t> *vec = static_cast<Vector<uint8_t> *>(ctx);
+        vec->reserve(vec->size() + len); // Allocate extra space all at once
+        for (size_t i = 0; i < len; i++)
         {
-            size_t new_capacity = (new_len > db->capacity * 2) ? new_len : db->capacity + 1024; // Use additive growth
-            uint8_t *new_data = reinterpret_cast<uint8_t *>(esp_sslclient_realloc(db->data, new_capacity));
-            if (!new_data)
-            {
-                // Handle allocation failure gracefully
-                return;
-            }
-            db->data = new_data;
-            db->capacity = new_capacity;
+            vec->push_back((reinterpret_cast<const uint8_t *>(buff))[i]);
         }
-
-        memcpy(db->data + db->len, buff, len);
-        db->len = new_len;
-    }
-
-    static void free_dyn_buffer(DynBuffer *db)
-    {
-        if (db->data)
-        {
-            // Use the library's custom free function
-            esp_sslclient_free(&db->data);
-        }
-        db->len = 0;
-        db->capacity = 0;
     }
 
     static bool certificate_to_trust_anchor_inner(br_x509_trust_anchor *ta, const br_x509_certificate *xc)
     {
+        ReadyUtils::unique_ptr<br_x509_decoder_context> dc(new br_x509_decoder_context); // auto-delete on exit
+        Vector<uint8_t> vdn;
+        br_x509_pkey *pk;
 
-        br_x509_decoder_context *dc = reinterpret_cast<br_x509_decoder_context *>(esp_sslclient_malloc(sizeof(br_x509_decoder_context)));
-
-        if (!dc)
-            return false; // OOM check on context allocation
-
-        DynBuffer vdn_buffer; // Temporary buffer where the DN data is collected
-        br_x509_pkey *pk = nullptr;
-        bool success = false; // Status flag
-
-        // Ensure Trust Anchor is clean before starting
+        // Clear everything in the Trust Anchor
         memset(ta, 0, sizeof(*ta));
 
-        br_x509_decoder_init(dc, byte_vector_append, reinterpret_cast<void *>(&vdn_buffer)); // Pass new struct
-        br_x509_decoder_push(dc, xc->data, xc->data_len);
-
-        // Check for decoding error before getting the key
-        if (br_x509_decoder_last_error(dc) != 0)
-        {
-            // Decoding error occurred
-            goto cleanup;
-        }
-
-        pk = br_x509_decoder_get_pkey(dc);
-
+        br_x509_decoder_init(dc.get(), byte_vector_append, reinterpret_cast<void *>(&vdn));
+        br_x509_decoder_push(dc.get(), xc->data, xc->data_len);
+        pk = br_x509_decoder_get_pkey(dc.get());
         if (pk == nullptr)
-        {
-            // No key present
-            goto cleanup;
-        }
+            return false; // No key present, something broken in the cert!
 
-        // Copy Parsed DN Data (Matching original STL code's logic)
-        // This is where the correction is applied: COPY the data instead of transferring the buffer itself.
-        if (vdn_buffer.len > 0)
-        {
-            ta->dn.data = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(vdn_buffer.len));
-            if (!ta->dn.data)
-            {
-                // OOM on DN copy
-                goto cleanup;
-            }
-            memcpy(ta->dn.data, vdn_buffer.data, vdn_buffer.len);
-            ta->dn.len = vdn_buffer.len;
-        }
-        else
-        {
-            ta->dn.data = nullptr; // Ensure null if DN is empty
-            ta->dn.len = 0;
-        }
+        // Copy the raw certificate data
+        ta->dn.data = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(vdn.size()));
+        if (!ta->dn.data)
+            return false; // OOM, but nothing yet allocated
 
+        memcpy(ta->dn.data, &vdn[0], vdn.size());
+        ta->dn.len = vdn.size();
         ta->flags = 0;
-        if (br_x509_decoder_isCA(dc))
+        if (br_x509_decoder_isCA(dc.get()))
             ta->flags |= BR_X509_TA_CA;
 
-        // Extract and Copy Public Key (Standard C-style logic is retained)
-        // (Existing key copy logic remains here)
+        // Extract the public key
         switch (pk->key_type)
         {
         case BR_KEYTYPE_RSA:
-            // (RSA allocation and copy logic)
             ta->pkey.key_type = BR_KEYTYPE_RSA;
             ta->pkey.key.rsa.n = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.nlen));
             ta->pkey.key.rsa.e = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.rsa.elen));
             if ((ta->pkey.key.rsa.n == nullptr) || (ta->pkey.key.rsa.e == nullptr))
             {
-                // OOM, so clean up DN data allocated above
-                free_ta_contents(ta);
-                goto cleanup;
+                free_ta_contents(ta); // OOM, so clean up
+                return false;
             }
             memcpy(ta->pkey.key.rsa.n, pk->key.rsa.n, pk->key.rsa.nlen);
             ta->pkey.key.rsa.nlen = pk->key.rsa.nlen;
             memcpy(ta->pkey.key.rsa.e, pk->key.rsa.e, pk->key.rsa.elen);
             ta->pkey.key.rsa.elen = pk->key.rsa.elen;
-            success = true;
-            break;
+            return true;
 
         case BR_KEYTYPE_EC:
-            // (EC allocation and copy logic)
             ta->pkey.key_type = BR_KEYTYPE_EC;
             ta->pkey.key.ec.curve = pk->key.ec.curve;
             ta->pkey.key.ec.q = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(pk->key.ec.qlen));
             if (ta->pkey.key.ec.q == nullptr)
             {
-                // OOM, so clean up DN data allocated above
-                free_ta_contents(ta);
-                goto cleanup;
+                free_ta_contents(ta); // OOM, so clean up
+                return false;
             }
             memcpy(ta->pkey.key.ec.q, pk->key.ec.q, pk->key.ec.qlen);
             ta->pkey.key.ec.qlen = pk->key.ec.qlen;
-            success = true;
-            break;
-
+            return true;
         default:
-            free_ta_contents(ta); // Unknown key type, clean up DN
-            goto cleanup;
+            free_ta_contents(ta); // Unknown key type
+            return false;
         }
 
-    cleanup:
-        // Explicit cleanup of the decoder context and the temporary buffer
-        esp_sslclient_free(&dc);
-        free_dyn_buffer(&vdn_buffer);
-
-        return success;
+        // Should never get here, if so there was an unknown error
+        return false;
     }
 
-    static br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
+    br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
     {
         br_x509_trust_anchor *ta = reinterpret_cast<br_x509_trust_anchor *>(esp_sslclient_malloc(sizeof(br_x509_trust_anchor)));
         if (!ta)
@@ -252,7 +192,7 @@ namespace key_bssl
         return ta;
     }
 
-    static void free_ta_contents(br_x509_trust_anchor *ta)
+    void free_ta_contents(br_x509_trust_anchor *ta)
     {
         if (ta)
         {
@@ -273,7 +213,7 @@ namespace key_bssl
     // Basically tries to verify the length of all included segments
     // matches the length of the input buffer.  Does not actually
     // validate any contents.
-    static bool looks_like_DER(const unsigned char *buff, size_t len)
+    bool looks_like_DER(const unsigned char *buff, size_t len)
     {
         if (len < 2)
             return false;
@@ -305,7 +245,7 @@ namespace key_bssl
         }
     }
 
-    static void free_pem_object_contents(pem_object *po)
+    void free_pem_object_contents(pem_object *po)
     {
         if (po)
         {
@@ -314,7 +254,7 @@ namespace key_bssl
         }
     }
 
-    static char *strdupImpl(const char *s)
+    char *strdupImpl(const char *s)
     {
         size_t slen = strlen(s);
         char *result = reinterpret_cast<char *>(esp_sslclient_malloc(slen + 1));
@@ -324,60 +264,26 @@ namespace key_bssl
         return result;
     }
 
-    struct PemList
-    {
-        key_bssl::pem_object *array = nullptr;
-        size_t count = 0;
-        size_t capacity = 0;
-    };
-
-    // --- Helper to grow the PemList array ---
-    static bool pem_list_push_back(PemList *list, key_bssl::pem_object po)
-    {
-        if (list->count >= list->capacity)
-        {
-            size_t new_capacity = list->capacity == 0 ? 4 : list->capacity * 2;
-            key_bssl::pem_object *new_array =
-                (key_bssl::pem_object *)esp_sslclient_realloc(list->array, new_capacity * sizeof(key_bssl::pem_object));
-
-            if (!new_array)
-                return false;
-
-            list->array = new_array;
-            list->capacity = new_capacity;
-        }
-        list->array[list->count++] = po;
-        return true;
-    }
-
     // Converts a PEM (~=base64) source into a set of DER-encoded binary blobs.
     // Each blob is named by the ---- BEGIN xxx ---- field, and multiple
     // blobs may be returned.
-    static key_bssl::pem_object *decode_pem(const void *src, size_t len, size_t *num)
+    pem_object *decode_pem(const void *src, size_t len, size_t *num)
     {
-        // Replace std::unique_ptr with manual pointer
-        br_pem_decoder_context *pc = nullptr;
-
-        PemList pem_list;
-
-        key_bssl::pem_object po;
-        key_bssl::pem_object *pos = nullptr;
-        const unsigned char *buff = nullptr;
-
-        // Use our DynBuffer for the intermediate data vector (bv)
-        DynBuffer bv_buffer;
-
-        // Manual allocation for br_pem_decoder_context
-        pc = reinterpret_cast<br_pem_decoder_context *>(esp_sslclient_malloc(sizeof(br_pem_decoder_context)));
-        if (!pc)
+        Vector<pem_object> pem_list;
+        ReadyUtils::unique_ptr<br_pem_decoder_context> pc(new br_pem_decoder_context); // auto-delete on exit
+        if (!pc.get())
             return nullptr;
 
-        *num = 0;
-        br_pem_decoder_init(pc);
-        buff = reinterpret_cast<const unsigned char *>(src);
+        pem_object po, *pos = nullptr;
+        const unsigned char *buff = nullptr;
+        Vector<uint8_t> bv;
 
-        // Initialize current object state
-        memset(&po, 0, sizeof(po));
+        *num = 0;
+        br_pem_decoder_init(pc.get());
+        buff = reinterpret_cast<const unsigned char *>(src);
+        po.name = nullptr;
+        po.data = nullptr;
+        po.data_len = 0;
         bool inobj = false;
         bool extra_nl = true;
 
@@ -385,44 +291,44 @@ namespace key_bssl
         {
             size_t tlen;
 
-            tlen = br_pem_decoder_push(pc, buff, len);
+            tlen = br_pem_decoder_push(pc.get(), buff, len);
             buff += tlen;
             len -= tlen;
-
-            switch (br_pem_decoder_event(pc))
+            switch (br_pem_decoder_event(pc.get()))
             {
             case BR_PEM_BEGIN_OBJ:
-                po.name = strdupImpl(br_pem_decoder_name(pc));
-                br_pem_decoder_setdest(pc, byte_vector_append, &bv_buffer); // Use DynBuffer
+                po.name = strdupImpl(br_pem_decoder_name(pc.get()));
+                br_pem_decoder_setdest(pc.get(), byte_vector_append, &bv);
                 inobj = true;
                 break;
 
             case BR_PEM_END_OBJ:
                 if (inobj)
                 {
-                    // Stick data into the dynamic list (PemList)
-                    po.data = bv_buffer.data; // Take ownership of the allocated buffer
-                    po.data_len = bv_buffer.len;
-
-                    // CRITICAL: Push result to list. If this fails, we must clean all memory.
-                    if (!pem_list_push_back(&pem_list, po))
+                    // Stick data into the vector
+                    po.data = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(bv.size()));
+                    if (po.data)
                     {
-                        // OOM during list growth, clean up everything allocated so far
-                        goto pem_error_cleanup;
+                        memcpy(po.data, &bv[0], bv.size());
+                        po.data_len = bv.size();
+                        pem_list.push_back(po);
                     }
-
-                    // Reset buffer struct pointers/counts since ownership was transferred to po
-                    memset(&bv_buffer, 0, sizeof(bv_buffer));
-
-                    // Reset object state for next blob processing
-                    memset(&po, 0, sizeof(po));
+                    // Clean up state for next blob processing
+                    bv.clear();
+                    po.name = nullptr;
+                    po.data = nullptr;
+                    po.data_len = 0;
                     inobj = false;
                 }
                 break;
 
             case BR_PEM_ERROR:
-                // Intentional fallthrough to cleanup on error
-                goto pem_error_cleanup;
+                esp_sslclient_free(&po.name);
+                for (size_t i = 0; i < pem_list.size(); i++)
+                {
+                    free_pem_object_contents(&pem_list[i]);
+                }
+                return nullptr;
 
             default:
                 // Do nothing here, the parser is still working on things
@@ -437,113 +343,37 @@ namespace key_bssl
             }
         }
 
-        if (inobj || (br_pem_decoder_event(pc) == BR_PEM_ERROR)) // Or similar logic inside the loop
+        if (inobj)
         {
-            goto pem_error_cleanup;
+            esp_sslclient_free(&po.name);
+            for (size_t i = 0; i < pem_list.size(); i++)
+            {
+                free_pem_object_contents(&pem_list[i]);
+            }
+            return nullptr;
         }
 
-        // --- FINAL SUCCESS ALLOCATION ---
-
-        // Allocate final contiguous array large enough for all pem_objects + a null terminator
-        // The *num element must be zeroed here for safety.
-        *num = pem_list.count;
-        pos = reinterpret_cast<key_bssl::pem_object *>(esp_sslclient_malloc((pem_list.count + 1) * sizeof(*pos)));
-
+        pos = reinterpret_cast<pem_object *>(esp_sslclient_malloc((1 + pem_list.size()) * sizeof(*pos)));
         if (pos)
         {
-            // Copy the validated pem_objects into the final allocated array
-            memcpy(pos, pem_list.array, pem_list.count * sizeof(*pos));
-
-            // Null-terminate the list (last element is zeroed)
-            memset(&pos[pem_list.count], 0, sizeof(*pos));
-
-            // Success: Clean up the intermediate list and decoder context
-            esp_sslclient_free(&pem_list.array);
-            esp_sslclient_free(&pc);
-
-            return pos;
+            *num = pem_list.size();
+            pem_list.push_back(po); // Null-terminate list
+            memcpy(pos, &pem_list[0], pem_list.size() * sizeof(*pos));
         }
-
-        // OOM during final allocation of 'pos', cleanup required
-        goto pem_error_cleanup;
-
-    pem_error_cleanup:
-        // If the loop finished with an error or parsing failed mid-object
-
-        // 1. Clean up the current object being parsed (if we were inobj)
-        if (po.name)
-            esp_sslclient_free(&po.name);
-        // 2. Clean up any data in the temporary DynBuffer
-        free_dyn_buffer(&bv_buffer);
-        // 3. Clean up all valid objects already collected in the list
-        if (pem_list.array)
-        {
-            for (size_t i = 0; i < pem_list.count; i++)
-            {
-                // NOTE: po.data was the actual allocated blob, but we transferred ownership
-                // to pem_list.array[i]. We MUST NOT free the data blobs here because we
-                // are relying on the *final* free_pem_object_contents() called after decode_pem
-                // to handle the actual data blobs for the final 'pos' array, OR
-                // we free all the blobs created during list compilation.
-
-                // Since the logic relies on the caller freeing pos (and its contents),
-                // we must only free the *intermediate* list structure itself.
-
-                // If we failed mid-copy, we must manually free blobs already in pem_list.array
-                // that won't be returned to the caller.
-                free_pem_object_contents(&pem_list.array[i]);
-            }
-            esp_sslclient_free(&pem_list.array);
-        }
-        // 4. Clean up the decoder context
-        esp_sslclient_free(&pc);
-
-        *num = 0;
-        return nullptr;
-    }
-
-    static void free_certificates(br_x509_certificate *certs, size_t num)
-    {
-        if (certs)
-        {
-            for (size_t u = 0; u < num; u++)
-            {
-                free(certs[u].data);
-            }
-            esp_sslclient_free(&certs);
-        }
-    }
-
-    static void free_pem_object(pem_object *pos)
-    {
-        if (pos != nullptr)
-        {
-            for (size_t u = 0; pos[u].name; u++)
-            {
-                free_pem_object_contents(&pos[u]);
-            }
-            esp_sslclient_free(&pos);
-        }
+        return pos;
     }
 
     // Parse out DER or PEM encoded certificates from a binary buffer,
     // potentially stored in PROGMEM.
-    // Assuming pem_object, free_pem_object, key_bssl::free_certificates, and key_bssl::read_certificates
-    // are defined (or used) elsewhere.
-
-    static br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
+    br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
     {
-        br_x509_certificate *cert_array = nullptr;
-        size_t cert_count = 0;
-        size_t cert_capacity = 0; // Tracks allocated space for dynamic growth
-
+        Vector<br_x509_certificate> cert_list;
         pem_object *pos = nullptr;
         size_t u = 0, num_pos = 0;
         br_x509_certificate *xcs = nullptr;
+        br_x509_certificate dummy;
 
         *num = 0;
-
-        // --- 1. Handle DER Format (Single Certificate, no change needed here) ---
 
         if (looks_like_DER(reinterpret_cast<const unsigned char *>(buff), len))
         {
@@ -557,8 +387,7 @@ namespace key_bssl
                 esp_sslclient_free(&xcs);
                 return nullptr;
             }
-            // Note: Original code uses memcpy_P here; assuming buff contains data from PROGMEM or RAM
-            memcpy(xcs[0].data, buff, len);
+            memcpy_P(xcs[0].data, buff, len);
             xcs[0].data_len = len;
             xcs[1].data = nullptr;
             xcs[1].data_len = 0;
@@ -566,183 +395,124 @@ namespace key_bssl
             return xcs;
         }
 
-        // --- 2. Handle PEM Format (Multiple Certificates) ---
-
         pos = decode_pem(buff, len, &num_pos);
         if (!pos)
             return nullptr;
 
-        // Iterate through all PEM objects decoded
         for (u = 0; u < num_pos; u++)
         {
-            // Check if the PEM object is a certificate
             if (!strcmp_P(pos[u].name, PSTR("CERTIFICATE")) || !strcmp_P(pos[u].name, PSTR("X509 CERTIFICATE")))
             {
                 br_x509_certificate xc;
                 xc.data = pos[u].data;
                 xc.data_len = pos[u].data_len;
-
-                // --- C-STYLE VECTOR PUSH BACK ---
-
-                // 1. Check capacity and reallocate if necessary
-                if (cert_count >= cert_capacity)
-                {
-                    size_t new_capacity = cert_capacity == 0 ? 4 : cert_capacity * 2;
-                    br_x509_certificate *new_array =
-                        reinterpret_cast<br_x509_certificate *>(esp_sslclient_realloc(cert_array, new_capacity * sizeof(*cert_array)));
-
-                    if (!new_array)
-                    {
-                        // OOM during array growth. Must clean up all data collected so far.
-                        free_certificates(cert_array, cert_count); // Free collected cert blobs
-                        free_pem_object(pos);
-                        return nullptr;
-                    }
-                    cert_array = new_array;
-                    cert_capacity = new_capacity;
-                }
-
-                // 2. Add the new certificate structure
-                cert_array[cert_count++] = xc;
-
-                // 3. IMPORTANT: Reset the data pointer in the pem_object,
-                // as ownership was transferred to cert_array[cert_count-1]
-                pos[u].data = nullptr;
+                pos[u].data = nullptr; // Don't free the data we moved to the xc vector!
+                cert_list.push_back(xc);
             }
         }
+        for (u = 0; u < num_pos; u++)
+        {
+            free_pem_object_contents(&pos[u]);
+        }
+        esp_sslclient_free(&pos);
 
-        // --- Cleanup intermediate PEM objects ---
-        // Free the pem_object list itself (names and structure)
-        free_pem_object(pos);
+        if (cert_list.size() == 0)
+            return nullptr;
 
-        if (cert_count == 0)
-            return nullptr; // No valid certificates found
-
-        // --- Finalization: Resize array and add sentinel ---
-
-        // Resize cert_array to fit the actual certificates + 1 sentinel
-        size_t final_size = cert_count + 1;
-        xcs = reinterpret_cast<br_x509_certificate *>(esp_sslclient_realloc(cert_array, final_size * sizeof(*xcs)));
-
+        *num = cert_list.size();
+        dummy.data = nullptr;
+        dummy.data_len = 0;
+        cert_list.push_back(dummy);
+        xcs = reinterpret_cast<br_x509_certificate *>(esp_sslclient_malloc(cert_list.size() * sizeof(*xcs)));
         if (!xcs)
         {
-            // OOM during final resize/realloc, must free all cert data blobs manually
-            free_certificates(cert_array, cert_count);
+            for (size_t i = 0; i < cert_list.size(); i++)
+            {
+                free(cert_list[i].data); // Clean up any captured data blobs
+            }
             return nullptr;
         }
-        cert_array = xcs; // Point to the reallocated (or resized) memory
+        memcpy(xcs, &cert_list[0], cert_list.size() * sizeof(br_x509_certificate));
+        // XCS now has [].data pointing to the previously allocated blobs, so don't
+        // want to free anything in cert_list[].
+        return xcs;
+    }
 
-        // Add the null sentinel certificate structure at the end
-        memset(&cert_array[cert_count], 0, sizeof(*xcs));
-
-        *num = cert_count;
-
-        return cert_array;
+    void free_certificates(br_x509_certificate *certs, size_t num)
+    {
+        if (certs)
+        {
+            for (size_t u = 0; u < num; u++)
+            {
+                free(certs[u].data);
+            }
+            esp_sslclient_free(&certs);
+        }
     }
 
     static public_key *decode_public_key(const unsigned char *buff, size_t len)
     {
-        // Replace std::unique_ptr with manual allocation
-        br_pkey_decoder_context *dc =
-            reinterpret_cast<br_pkey_decoder_context *>(esp_sslclient_malloc(sizeof(br_pkey_decoder_context)));
+        ReadyUtils::unique_ptr<br_pkey_decoder_context> dc(new br_pkey_decoder_context); // auto-delete on exit
+        if (!dc.get())
+            return nullptr;
 
-        if (!dc)
-            return nullptr; // OOM on context allocation
+        public_key *pk = nullptr;
+        // https://github.com/yglukhov/bearssl_pkey_decoder
+        br_pkey_decoder_init(dc.get());
+        br_pkey_decoder_push(dc.get(), buff, len);
+        int err = br_pkey_decoder_last_error(dc.get());
+        if (err != 0)
+            return nullptr;
 
-        key_bssl::public_key *pk = nullptr;
         const br_rsa_public_key *rk = nullptr;
         const br_ec_public_key *ek = nullptr;
-
-        // --- Decoding Process ---
-
-        br_pkey_decoder_init(dc);
-        br_pkey_decoder_push(dc, buff, len);
-        int err = br_pkey_decoder_last_error(dc);
-
-        if (err != 0)
-        {
-            // Decoding failed. Clean up the context and exit.
-            esp_sslclient_free(&dc);
-            return nullptr;
-        }
-
-        // --- Key Extraction and Deep Copy ---
-
-        switch (br_pkey_decoder_key_type(dc))
+        switch (br_pkey_decoder_key_type(dc.get()))
         {
         case BR_KEYTYPE_RSA:
-            rk = br_pkey_decoder_get_rsa(dc);
-            pk = reinterpret_cast<key_bssl::public_key *>(esp_sslclient_malloc(sizeof(*pk)));
+            rk = br_pkey_decoder_get_rsa(dc.get());
+            pk = reinterpret_cast<public_key *>(esp_sslclient_malloc(sizeof *pk));
             if (!pk)
-            {
-                goto cleanup_context; // OOM during pk allocation
-            }
-
+                return nullptr;
             pk->key_type = BR_KEYTYPE_RSA;
-
-            // Deep copy key components (n and e)
             pk->key.rsa.n = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->nlen));
             pk->key.rsa.e = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->elen));
-
             if (!pk->key.rsa.n || !pk->key.rsa.e)
             {
-                // OOM during component allocation, must clean up partially allocated pk
-                key_bssl::free_public_key(pk);
-                goto cleanup_context;
+                esp_sslclient_free(&pk->key.rsa.n);
+                esp_sslclient_free(&pk->key.rsa.e);
+                esp_sslclient_free(&pk);
+                return nullptr;
             }
-
             memcpy(pk->key.rsa.n, rk->n, rk->nlen);
             pk->key.rsa.nlen = rk->nlen;
             memcpy(pk->key.rsa.e, rk->e, rk->elen);
             pk->key.rsa.elen = rk->elen;
-
-            // Success: Clean up only the decoder context
-            esp_sslclient_free(&dc);
             return pk;
 
         case BR_KEYTYPE_EC:
-            ek = br_pkey_decoder_get_ec(dc);
-            pk = reinterpret_cast<key_bssl::public_key *>(esp_sslclient_malloc(sizeof *pk));
+            ek = br_pkey_decoder_get_ec(dc.get());
+            pk = reinterpret_cast<public_key *>(esp_sslclient_malloc(sizeof *pk));
             if (!pk)
-            {
-                goto cleanup_context; // OOM during pk allocation
-            }
+                return nullptr;
 
             pk->key_type = BR_KEYTYPE_EC;
-
-            // Deep copy key component (q)
             pk->key.ec.q = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(ek->qlen));
-
             if (!pk->key.ec.q)
             {
-                // OOM during component allocation
-                key_bssl::free_public_key(pk);
-                goto cleanup_context;
+                esp_sslclient_free(&pk);
+                return nullptr;
             }
-
             memcpy(pk->key.ec.q, ek->q, ek->qlen);
             pk->key.ec.qlen = ek->qlen;
             pk->key.ec.curve = ek->curve;
-
-            // Success: Clean up only the decoder context
-            esp_sslclient_free(&dc);
             return pk;
 
         default:
-            // Key type not supported or recognized
-            goto cleanup_context;
+            return nullptr;
         }
-
-    // --- Central Cleanup Point ---
-    cleanup_context:
-        if (dc)
-        {
-            esp_sslclient_free(&dc);
-        }
-        return nullptr;
     }
 
-    static void free_public_key(public_key *pk)
+    void free_public_key(public_key *pk)
     {
         if (pk)
         {
@@ -759,57 +529,38 @@ namespace key_bssl
 
     static private_key *decode_private_key(const unsigned char *buff, size_t len)
     {
-        // Replace std::unique_ptr with manual allocation
-        br_skey_decoder_context *dc =
-            reinterpret_cast<br_skey_decoder_context *>(esp_sslclient_malloc(sizeof(br_skey_decoder_context)));
-
-        if (!dc)
-            return nullptr; // OOM on context allocation
+        ReadyUtils::unique_ptr<br_skey_decoder_context> dc(new br_skey_decoder_context); // auto-delete on exit
+        if (!dc.get())
+            return nullptr;
 
         private_key *sk = nullptr;
+
+        br_skey_decoder_init(dc.get());
+        br_skey_decoder_push(dc.get(), buff, len);
+        int err = br_skey_decoder_last_error(dc.get());
+        if (err != 0)
+            return nullptr;
+
         const br_rsa_private_key *rk = nullptr;
         const br_ec_private_key *ek = nullptr;
-
-        // --- Decoding Process ---
-
-        br_skey_decoder_init(dc);
-        br_skey_decoder_push(dc, buff, len);
-        int err = br_skey_decoder_last_error(dc);
-
-        if (err != 0)
-        {
-            // Decoding failed. Clean up the context and exit.
-            goto cleanup_context;
-        }
-
-        // --- Key Extraction and Deep Copy ---
-
-        switch (br_skey_decoder_key_type(dc))
+        switch (br_skey_decoder_key_type(dc.get()))
         {
         case BR_KEYTYPE_RSA:
-            rk = br_skey_decoder_get_rsa(dc);
-            sk = reinterpret_cast<key_bssl::private_key *>(esp_sslclient_malloc(sizeof *sk));
+            rk = br_skey_decoder_get_rsa(dc.get());
+            sk = reinterpret_cast<private_key *>(esp_sslclient_malloc(sizeof *sk));
             if (!sk)
-            {
-                goto cleanup_context; // OOM during sk allocation
-            }
-
+                return nullptr;
             sk->key_type = BR_KEYTYPE_RSA;
-
-            // Deep copy all RSA components (p, q, dp, dq, iq)
             sk->key.rsa.p = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->plen));
             sk->key.rsa.q = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->qlen));
             sk->key.rsa.dp = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->dplen));
             sk->key.rsa.dq = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->dqlen));
             sk->key.rsa.iq = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(rk->iqlen));
-
             if (!sk->key.rsa.p || !sk->key.rsa.q || !sk->key.rsa.dp || !sk->key.rsa.dq || !sk->key.rsa.iq)
             {
-                // OOM during component allocation, must clean up partially allocated sk
-                key_bssl::free_private_key(sk);
-                goto cleanup_context;
+                free_private_key(sk);
+                return nullptr;
             }
-
             sk->key.rsa.n_bitlen = rk->n_bitlen;
             memcpy(sk->key.rsa.p, rk->p, rk->plen);
             sk->key.rsa.plen = rk->plen;
@@ -821,53 +572,31 @@ namespace key_bssl
             sk->key.rsa.dqlen = rk->dqlen;
             memcpy(sk->key.rsa.iq, rk->iq, rk->iqlen);
             sk->key.rsa.iqlen = rk->iqlen;
-
-            // Success: Clean up only the decoder context
-            esp_sslclient_free(&dc);
             return sk;
 
         case BR_KEYTYPE_EC:
-            ek = br_skey_decoder_get_ec(dc);
-            sk = reinterpret_cast<key_bssl::private_key *>(esp_sslclient_malloc(sizeof *sk));
+            ek = br_skey_decoder_get_ec(dc.get());
+            sk = reinterpret_cast<private_key *>(esp_sslclient_malloc(sizeof *sk));
             if (!sk)
-            {
-                goto cleanup_context; // OOM during sk allocation
-            }
-
+                return nullptr;
             sk->key_type = BR_KEYTYPE_EC;
-
-            // Deep copy key component (x)
+            sk->key.ec.curve = ek->curve;
             sk->key.ec.x = reinterpret_cast<uint8_t *>(esp_sslclient_malloc(ek->xlen));
-
             if (!sk->key.ec.x)
             {
-                // OOM during component allocation
-                key_bssl::free_private_key(sk);
-                goto cleanup_context;
+                free_private_key(sk);
+                return nullptr;
             }
-
-            sk->key.ec.curve = ek->curve;
             memcpy(sk->key.ec.x, ek->x, ek->xlen);
             sk->key.ec.xlen = ek->xlen;
-
-            // Success: Clean up only the decoder context
-            esp_sslclient_free(&dc);
             return sk;
 
         default:
-            // Key type not supported or recognized
-            goto cleanup_context;
+            return nullptr;
         }
-
-    // --- Central Cleanup Point ---
-    cleanup_context:
-        if (dc)
-        {
-            esp_sslclient_free(&dc);
-        }
-        return nullptr;
     }
-    static void free_private_key(private_key *sk)
+
+    void free_private_key(private_key *sk)
     {
         if (sk)
         {
@@ -891,7 +620,19 @@ namespace key_bssl
         }
     }
 
-    static private_key *read_private_key(const char *buff, size_t len)
+    void free_pem_object(pem_object *pos)
+    {
+        if (pos != nullptr)
+        {
+            for (size_t u = 0; pos[u].name; u++)
+            {
+                free_pem_object_contents(&pos[u]);
+            }
+            esp_sslclient_free(&pos);
+        }
+    }
+
+    private_key *read_private_key(const char *buff, size_t len)
     {
         private_key *sk = nullptr;
         pem_object *pos = nullptr;
@@ -922,7 +663,7 @@ namespace key_bssl
         return nullptr;
     }
 
-    static public_key *read_public_key(const char *buff, size_t len)
+    public_key *read_public_key(const char *buff, size_t len)
     {
         public_key *pk = nullptr;
         pem_object *pos = nullptr;
@@ -1005,7 +746,7 @@ private:
  * -- AES-128 is preferred over AES-256 (AES-128 is already
  *    strong enough, and AES-256 is 40% more expensive).
  */
-static const uint16_t suites_P[] CONST_IN_FLASH = {
+static const uint16_t suites_P[] PROGMEM = {
 #ifndef BEARSSL_SSL_BASIC
     BR_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
     BR_TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -1058,7 +799,7 @@ static const uint16_t suites_P[] CONST_IN_FLASH = {
 };
 
 // For apps which want to use less secure but faster ciphers, only
-static const uint16_t faster_suites_P[] CONST_IN_FLASH = {
+static const uint16_t faster_suites_P[] PROGMEM = {
     BR_TLS_RSA_WITH_AES_256_CBC_SHA256,
     BR_TLS_RSA_WITH_AES_128_CBC_SHA256,
     BR_TLS_RSA_WITH_AES_256_CBC_SHA,
@@ -1480,7 +1221,7 @@ namespace bssl
             br_x509_insecure_context *xc = reinterpret_cast<br_x509_insecure_context *>(ctx);
 #if defined(BSSL_BUILD_PLATFORM_CORE)
             br_x509_decoder_init(&xc->ctx, insecure_subject_dn_append, xc, insecure_issuer_dn_append, xc);
-#elif defined(ESP32) || defined(USE_LIB_SSL_ENGINE)
+#elif defined(ESP32) || defined(BSSL_BUILD_INTERNAL_CORE)
             br_x509_decoder_init(&xc->ctx, insecure_subject_dn_append, xc);
 #endif
             xc->done_cert = false;
@@ -1540,7 +1281,6 @@ namespace bssl
     }
 
 };
-
 #endif
 
 #endif

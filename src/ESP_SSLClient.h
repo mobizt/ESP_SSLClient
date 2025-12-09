@@ -8,9 +8,9 @@
 #define ESP_SSLCLIENT_H
 
 #define ESP_SSLCLIENT_VERSION_MAJOR 3
-#define ESP_SSLCLIENT_VERSION_MINOR 0
-#define ESP_SSLCLIENT_VERSION_PATCH 6
-#define ESP_SSLCLIENT_VERSION "3.0.6"
+#define ESP_SSLCLIENT_VERSION_MINOR 1
+#define ESP_SSLCLIENT_VERSION_PATCH 0
+#define ESP_SSLCLIENT_VERSION "3.1.0"
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -23,7 +23,6 @@
 #define CONST_IN_FLASH PROGMEM
 #else
 #define CONST_IN_FLASH
-#include <vector>
 #endif
 
 #if (defined(ESP8266) || defined(ARDUINO_ARCH_RP2040)) && !defined(ARDUINO_NANO_RP2040_CONNECT)
@@ -175,6 +174,8 @@ extern "C"
 #include "bssl/bearssl.h"
 }
 
+#include "vector/Vector.h"
+#include "client/UniquePtr.h"
 #include "client/Memory.h"
 #include "client/Helper.h"
 #include "client/CertStore.h"
