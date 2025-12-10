@@ -8,9 +8,19 @@
 #define DYNAMIC_VECTOR_H
 
 #include <stdlib.h>
-#include <stddef.h> 
+#include <stddef.h>
 #include <string.h>
+#if defined(ARDUINO_AVR_UNO_WIFI_REV2) || defined(__AVR_ATmega4809__)
+
+#include <stddef.h> // Required for size_t
+inline void *operator new(size_t size, void *ptr) noexcept
+{
+    return ptr;
+}
+
+#else
 #include <new> // fix for new/delete operators
+#endif
 #include "../Abort.h"
 
 namespace ReadyUtils
