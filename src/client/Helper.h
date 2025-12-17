@@ -94,13 +94,13 @@ namespace key_bssl
     };
 
     // Forward definitions
-    void free_ta_contents(br_x509_trust_anchor *ta);
-    void free_public_key(public_key *pk);
-    void free_private_key(private_key *sk);
-    bool looks_like_DER(const unsigned char *buf, size_t len);
-    pem_object *decode_pem(const void *src, size_t len, size_t *num);
-    void free_pem_object_contents(pem_object *po);
-    char *strdupImpl(const char *s);
+    static void free_ta_contents(br_x509_trust_anchor *ta);
+    static void free_public_key(public_key *pk);
+    static void free_private_key(private_key *sk);
+    static bool looks_like_DER(const unsigned char *buf, size_t len);
+    static pem_object *decode_pem(const void *src, size_t len, size_t *num);
+    static void free_pem_object_contents(pem_object *po);
+    static char *strdupImpl(const char *s);
 
     // Used as callback multiple places to append a string to a vector
     static void byte_vector_append(void *ctx, const void *buff, size_t len)
@@ -178,7 +178,7 @@ namespace key_bssl
         return false;
     }
 
-    br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
+    static br_x509_trust_anchor *certificate_to_trust_anchor(const br_x509_certificate *xc)
     {
         br_x509_trust_anchor *ta = reinterpret_cast<br_x509_trust_anchor *>(esp_sslclient_malloc(sizeof(br_x509_trust_anchor)));
         if (!ta)
@@ -192,7 +192,7 @@ namespace key_bssl
         return ta;
     }
 
-    void free_ta_contents(br_x509_trust_anchor *ta)
+    static void free_ta_contents(br_x509_trust_anchor *ta)
     {
         if (ta)
         {
@@ -213,7 +213,7 @@ namespace key_bssl
     // Basically tries to verify the length of all included segments
     // matches the length of the input buffer.  Does not actually
     // validate any contents.
-    bool looks_like_DER(const unsigned char *buff, size_t len)
+    static bool looks_like_DER(const unsigned char *buff, size_t len)
     {
         if (len < 2)
             return false;
@@ -245,7 +245,7 @@ namespace key_bssl
         }
     }
 
-    void free_pem_object_contents(pem_object *po)
+    static void free_pem_object_contents(pem_object *po)
     {
         if (po)
         {
@@ -254,7 +254,7 @@ namespace key_bssl
         }
     }
 
-    char *strdupImpl(const char *s)
+    static char *strdupImpl(const char *s)
     {
         size_t slen = strlen(s);
         char *result = reinterpret_cast<char *>(esp_sslclient_malloc(slen + 1));
@@ -267,7 +267,7 @@ namespace key_bssl
     // Converts a PEM (~=base64) source into a set of DER-encoded binary blobs.
     // Each blob is named by the ---- BEGIN xxx ---- field, and multiple
     // blobs may be returned.
-    pem_object *decode_pem(const void *src, size_t len, size_t *num)
+    static pem_object *decode_pem(const void *src, size_t len, size_t *num)
     {
         Vector<pem_object> pem_list;
         ReadyUtils::unique_ptr<br_pem_decoder_context> pc(new br_pem_decoder_context); // auto-delete on exit
@@ -365,7 +365,7 @@ namespace key_bssl
 
     // Parse out DER or PEM encoded certificates from a binary buffer,
     // potentially stored in PROGMEM.
-    br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
+    static br_x509_certificate *read_certificates(const char *buff, size_t len, size_t *num)
     {
         Vector<br_x509_certificate> cert_list;
         pem_object *pos = nullptr;
@@ -438,7 +438,7 @@ namespace key_bssl
         return xcs;
     }
 
-    void free_certificates(br_x509_certificate *certs, size_t num)
+    static void free_certificates(br_x509_certificate *certs, size_t num)
     {
         if (certs)
         {
@@ -512,7 +512,7 @@ namespace key_bssl
         }
     }
 
-    void free_public_key(public_key *pk)
+    static void free_public_key(public_key *pk)
     {
         if (pk)
         {
@@ -596,7 +596,7 @@ namespace key_bssl
         }
     }
 
-    void free_private_key(private_key *sk)
+    static void free_private_key(private_key *sk)
     {
         if (sk)
         {
@@ -620,7 +620,7 @@ namespace key_bssl
         }
     }
 
-    void free_pem_object(pem_object *pos)
+    static void free_pem_object(pem_object *pos)
     {
         if (pos != nullptr)
         {
@@ -632,7 +632,7 @@ namespace key_bssl
         }
     }
 
-    private_key *read_private_key(const char *buff, size_t len)
+    static private_key *read_private_key(const char *buff, size_t len)
     {
         private_key *sk = nullptr;
         pem_object *pos = nullptr;
@@ -663,7 +663,7 @@ namespace key_bssl
         return nullptr;
     }
 
-    public_key *read_public_key(const char *buff, size_t len)
+    static public_key *read_public_key(const char *buff, size_t len)
     {
         public_key *pk = nullptr;
         pem_object *pos = nullptr;
