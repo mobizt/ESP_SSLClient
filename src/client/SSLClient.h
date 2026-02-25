@@ -2343,8 +2343,8 @@ private:
 #endif
                 return false;
             }
-
-            br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _internal_ta ? _internal_ta->getTrustAnchors() : (_ta ? _ta->getTrustAnchors() : nullptr), _internal_ta _internal_ta->getCount() : (_ta ? _ta->getCount() : 0));
+            
+            br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _internal_ta ? _internal_ta->getTrustAnchors() : (_ta ? _ta->getTrustAnchors() : nullptr), _internal_ta? _internal_ta->getCount() : (_ta ? _ta->getCount() : 0));
             br_x509_minimal_set_rsa(_x509_minimal, br_ssl_engine_get_rsavrfy(_eng));
 #ifndef BEARSSL_SSL_BASIC
             br_x509_minimal_set_ecdsa(_x509_minimal, br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
