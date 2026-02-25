@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
+ * SPDX-FileCopyrightText: 2026 Suwatchai K. <suwatchai@outlook.com>
  *
  * SPDX-License-Identifier: MIT
  */
@@ -9,8 +9,8 @@
 
 #define ESP_SSLCLIENT_VERSION_MAJOR 3
 #define ESP_SSLCLIENT_VERSION_MINOR 1
-#define ESP_SSLCLIENT_VERSION_PATCH 2
-#define ESP_SSLCLIENT_VERSION "3.1.2"
+#define ESP_SSLCLIENT_VERSION_PATCH 3
+#define ESP_SSLCLIENT_VERSION "3.1.3"
 
 #pragma GCC diagnostic ignored "-Wunused-function"
 #pragma GCC diagnostic ignored "-Wunused-variable"

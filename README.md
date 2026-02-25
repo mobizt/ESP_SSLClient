@@ -352,7 +352,7 @@ The core BearSSL implementation included in this library supports a comprehensiv
 
 MIT License
 
-Copyright (c) 2025 Suwatchai K.
+Copyright (c) 2026 Suwatchai K.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

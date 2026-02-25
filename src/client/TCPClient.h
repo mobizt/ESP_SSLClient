@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
+ * SPDX-FileCopyrightText: 2026 Suwatchai K. <suwatchai@outlook.com>
  *
  * SPDX-License-Identifier: MIT
  */
@@ -477,10 +477,10 @@ public:
      * @brief Sets the client certificate and private key for mutual authentication (ECC).
      * @param cert Pointer to the X509 certificate chain.
      * @param sk Pointer to the PrivateKey structure.
-     * @param allowed_usages Key usages required by the server.
-     * @param cert_issuer_key_type Issuer key type expected by the server.
+     * @param allowed_usages A bitmask defining the key usages for the client certificate (e.g., BR_KEYTYPE_SIGN). This is used to match the key usage requested by the server during mutual authentication.
+     * @param cert_issuer_key_type The algorithm type of the public key (e.g., BR_KEYTYPE_RSA) belonging to the authority that signed the client certificate. Helps in selecting the correct certificate chain.
      */
-    void setClientECCert(const X509List *cert, const PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type) { _ssl_client.setClientECCert(cert, sk, allowed_usages, cert_issuer_key_type); }
+    void setClientECCert(const X509List *cert, const PrivateKey *sk, unsigned int allowed_usages, unsigned int cert_issuer_key_type) { _ssl_client.setClientECCert(cert, sk, allowed_usages, cert_issuer_key_type); }
 
 #if defined(ENABLE_FS)
     /**
@@ -602,6 +602,15 @@ public:
      * @param private_key Pointer to the PEM/DER encoded client private key.
      */
     void setPrivateKey(const char *private_key) { return _ssl_client.setPrivateKey(private_key); }
+
+     /**
+     * @brief Sets the private key for mutual authentication (ECC).
+     * @param private_key Pointer to the PEM/DER encoded client private key.
+     * @param allowed_usages A bitmask defining the key usages for the client certificate (e.g., BR_KEYTYPE_SIGN). This is used to match the key usage requested by the server during mutual authentication.
+     * @param cert_issuer_key_type The algorithm type of the public key (e.g., BR_KEYTYPE_RSA) belonging to the authority that signed the client certificate. Helps in selecting the correct certificate chain.
+     */
+    void setPrivateECKey(const char *private_key, unsigned int allowed_usages, unsigned int cert_issuer_key_type) { _ssl_client.setPrivateECKey(private_key, allowed_usages, cert_issuer_key_type); }
+
 
     /**
      * @brief Reads and sets the CA certificate from an Arduino Stream (e.g., FS).

@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2025 Suwatchai K. <suwatchai@outlook.com>
+ * SPDX-FileCopyrightText: 2026 Suwatchai K. <suwatchai@outlook.com>
  *
  * SPDX-License-Identifier: MIT
  */
@@ -681,37 +681,22 @@ public:
     void setTrustAnchors(const X509List *ta)
     {
         mClearAuthenticationSettings();
+        mClearInternalTA();
         _ta = ta;
     }
 
     void setClientRSACert(const X509List *chain, const PrivateKey *sk)
     {
-        if (_esp32_chain)
-        {
-            delete _esp32_chain;
-            _esp32_chain = nullptr;
-        }
-        if (_esp32_sk)
-        {
-            delete _esp32_sk;
-            _esp32_sk = nullptr;
-        }
+        mClearInternalChain();
+        mClearInternalSK();
         _chain = chain;
         _sk = sk;
     }
 
-    void setClientECCert(const X509List *chain, const PrivateKey *sk, unsigned allowed_usages, unsigned cert_issuer_key_type)
+    void setClientECCert(const X509List *chain, const PrivateKey *sk, unsigned int allowed_usages, unsigned int cert_issuer_key_type)
     {
-        if (_esp32_chain)
-        {
-            delete _esp32_chain;
-            _esp32_chain = nullptr;
-        }
-        if (_esp32_sk)
-        {
-            delete _esp32_sk;
-            _esp32_sk = nullptr;
-        }
+        mClearInternalChain();
+        mClearInternalSK();
         _chain = chain;
         _sk = sk;
         _allowed_usages = allowed_usages;
@@ -836,20 +821,36 @@ public:
 #if !defined(SSLCLIENT_INSECURE_ONLY)
     void setCACert(const char *rootCA)
     {
-        mClearAuthenticationSettings();
-        _esp32_ta = new X509List(rootCA);
+        mClearAuthenticationSettings(false);
+        mClearInternalTA();
+        _ta = nullptr;
+        _internal_ta = new X509List(rootCA);
     }
 
     void setCertificate(const char *client_ca)
     {
-        mClearAuthenticationSettings();
-        _esp32_chain = new X509List(client_ca);
+        mClearAuthenticationSettings(false);
+        mClearInternalChain();
+        _chain = nullptr;
+        _internal_chain = new X509List(client_ca);
     }
 
     void setPrivateKey(const char *private_key)
     {
-        mClearAuthenticationSettings();
-        _esp32_sk = new PrivateKey(private_key);
+        mClearAuthenticationSettings(false);
+        mClearInternalSK();
+        _sk = nullptr;
+        _internal_sk = new PrivateKey(private_key);
+    }
+
+    void setPrivateECKey(const char *private_key, unsigned int allowed_usages, unsigned int cert_issuer_key_type)
+    {
+        mClearAuthenticationSettings(false);
+        mClearInternalSK();
+        _sk = nullptr;
+        _internal_sk = new PrivateKey(private_key);
+        _allowed_usages = allowed_usages;
+        _cert_issuer_key_type = cert_issuer_key_type;
     }
 
     bool loadCACert(Stream &stream, size_t size)
@@ -1493,7 +1494,7 @@ private:
 #else
 #define CRTSTORECOND
 #endif
-        if (!_use_insecure && !_use_fingerprint && !_use_self_signed && !_knownkey CRTSTORECOND && !_ta && !_esp32_ta)
+        if (!_use_insecure && !_use_fingerprint && !_use_self_signed && !_knownkey CRTSTORECOND && !_ta && !_internal_ta)
         {
             esp_ssl_debug_print(PSTR("Connection *will* fail, no authentication method is setup."), _debug_level, esp_ssl_debug_warn, __func__);
         }
@@ -1579,16 +1580,16 @@ private:
 
 #if !defined(SSLCLIENT_INSECURE_ONLY)
         // Apply any client certificates, if supplied.
-        if (_sk && _sk->isRSA())
+        if ((_sk && _sk->isRSA()) || (_internal_sk && _internal_sk->isRSA()))
         {
-            br_ssl_client_set_single_rsa(sc_ptr, _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
-                                         _sk->getRSA(), br_rsa_pkcs1_sign_get_default());
+            br_ssl_client_set_single_rsa(sc_ptr, _internal_chain ? _internal_chain->getX509Certs() : (_chain ? _chain->getX509Certs() : nullptr), _internal_chain ? _internal_chain->getCount() : (_chain ? _chain->getCount() : 0),
+                                         _internal_sk ? _internal_sk->getRSA() : _sk->getRSA(), br_rsa_pkcs1_sign_get_default());
         }
-        else if (_sk && _sk->isEC())
+        else if ((_sk && _sk->isEC()) || (_internal_sk && _internal_sk->isEC()))
         {
 #ifndef BEARSSL_SSL_BASIC
-            br_ssl_client_set_single_ec(sc_ptr, _chain ? _chain->getX509Certs() : nullptr, _chain ? _chain->getCount() : 0,
-                                        _sk->getEC(), _allowed_usages,
+            br_ssl_client_set_single_ec(sc_ptr, _internal_chain ? _internal_chain->getX509Certs() : (_chain ? _chain->getX509Certs() : nullptr), _internal_chain ? _internal_chain->getCount() : (_chain ? _chain->getCount() : 0),
+                                        _internal_sk ? _internal_sk->getEC() : _sk->getEC(), _allowed_usages,
                                         _cert_issuer_key_type, br_ec_get_default(), br_ecdsa_sign_asn1_get_default());
 #else
             mFreeSSL();
@@ -1597,11 +1598,6 @@ private:
 #endif
             return 0;
 #endif
-        }
-        else if (_esp32_sk && _esp32_chain)
-        {
-            br_ssl_client_set_single_rsa(sc_ptr, _esp32_chain->getX509Certs(), _esp32_chain->getCount(),
-                                         _esp32_sk->getRSA(), br_rsa_pkcs1_sign_get_default());
         }
 
 #endif
@@ -2148,7 +2144,40 @@ private:
         ctx->allow_self_signed = _allow_self_signed ? 1 : 0;
     }
 
-    void mClearAuthenticationSettings()
+    void mClearInternalTA()
+    {
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_internal_ta)
+        {
+            delete _internal_ta;
+            _internal_ta = nullptr;
+        }
+#endif
+    }
+
+    void mClearInternalChain()
+    {
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_internal_chain)
+        {
+            delete _internal_chain;
+            _internal_chain = nullptr;
+        }
+#endif
+    }
+
+    void mClearInternalSK()
+    {
+#if !defined(SSLCLIENT_INSECURE_ONLY)
+        if (_internal_sk)
+        {
+            delete _internal_sk;
+            _internal_sk = nullptr;
+        }
+#endif
+    }
+
+    void mClearAuthenticationSettings(bool full_clear = true)
     {
         _use_insecure = false;
         _use_fingerprint = false;
@@ -2157,25 +2186,13 @@ private:
 #if !defined(SSLCLIENT_INSECURE_ONLY)
         _knownkey = nullptr;
         _ta = nullptr;
-
-        if (_esp32_ta)
+        if (full_clear)
         {
-            delete _esp32_ta;
-            _esp32_ta = nullptr;
-        }
-
-        if (_esp32_chain)
-        {
-            delete _esp32_chain;
-            _esp32_chain = nullptr;
-        }
-        if (_esp32_sk)
-        {
-            delete _esp32_sk;
-            _esp32_sk = nullptr;
+            mClearInternalTA();
+            mClearInternalChain();
+            mClearInternalSK();
         }
 #endif
-
         esp_sslclient_free(&_cipher_list);
         _cipher_cnt = 0;
     }
@@ -2326,14 +2343,8 @@ private:
 #endif
                 return false;
             }
-            if (_esp32_ta)
-            {
-                br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _esp32_ta->getTrustAnchors(), _esp32_ta->getCount());
-            }
-            else
-            {
-                br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _ta ? _ta->getTrustAnchors() : nullptr, _ta ? _ta->getCount() : 0);
-            }
+
+            br_x509_minimal_init(_x509_minimal, &br_sha256_vtable, _internal_ta ? _internal_ta->getTrustAnchors() : (_ta ? _ta->getTrustAnchors() : nullptr), _internal_ta _internal_ta->getCount() : (_ta ? _ta->getCount() : 0));
             br_x509_minimal_set_rsa(_x509_minimal, br_ssl_engine_get_rsavrfy(_eng));
 #ifndef BEARSSL_SSL_BASIC
             br_x509_minimal_set_ecdsa(_x509_minimal, br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
@@ -2360,14 +2371,8 @@ private:
 #else // STATIC_X509_CONTEXT
 
             // X509 minimal validator.  Checks dates, cert chain for trusted CA, etc.
-            if (_esp32_ta)
-            {
-                br_x509_minimal_init(&_x509_minimal, &br_sha256_vtable, _esp32_ta->getTrustAnchors(), _esp32_ta->getCount());
-            }
-            else
-            {
-                br_x509_minimal_init(&_x509_minimal, &br_sha256_vtable, _ta ? _ta->getTrustAnchors() : nullptr, _ta ? _ta->getCount() : 0);
-            }
+            br_x509_minimal_init(&_x509_minimal, &br_sha256_vtable, _internal_ta ? _internal_ta->getTrustAnchors() : (_ta ? _ta->getTrustAnchors() : nullptr), _internal_ta ? _internal_ta->getCount() : (_ta ? _ta->getCount() : 0));
+
             br_x509_minimal_set_rsa(&_x509_minimal, br_ssl_engine_get_rsavrfy(_eng));
 #ifndef BEARSSL_SSL_BASIC
             br_x509_minimal_set_ecdsa(&_x509_minimal, br_ssl_engine_get_ec(_eng), br_ssl_engine_get_ecdsa(_eng));
@@ -2544,9 +2549,12 @@ private:
 
 #if !defined(SSLCLIENT_INSECURE_ONLY)
     const X509List *_ta = nullptr;
+    X509List *_internal_ta = nullptr;
     // Optional client certificate
     const X509List *_chain = nullptr;
-    const PrivateKey *_sk = nullptr;
+    const PrivateKey *_sk = nullptr;    
+    X509List *_internal_chain = nullptr;
+    PrivateKey *_internal_sk = nullptr;
 #endif
     unsigned int _allowed_usages = 0;
     unsigned int _cert_issuer_key_type = 0;
@@ -2572,12 +2580,6 @@ private:
     // TLS ciphers allowed
     uint32_t _tls_min = BR_TLS10;
     uint32_t _tls_max = BR_TLS12;
-
-#if !defined(SSLCLIENT_INSECURE_ONLY)
-    X509List *_esp32_ta = nullptr;
-    X509List *_esp32_chain = nullptr;
-    PrivateKey *_esp32_sk = nullptr;
-#endif
 
     bool _handshake_done = false;
     bool _oom_err = false;
