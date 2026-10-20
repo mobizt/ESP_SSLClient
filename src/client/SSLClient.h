@@ -485,8 +485,13 @@ public:
 
     void stop() override
     {
+        // Plain connection, or a TLS handshake that failed: there is no TLS session to close, but the socket is still open
         if (!_secure)
+        {
+            if (_basic_client)
+                _basic_client->stop();
             return;
+        }
 
         // Only if we've already connected, store session params and clear the connection options
         if (_session)
