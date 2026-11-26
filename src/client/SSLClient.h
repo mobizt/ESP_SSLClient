@@ -2021,6 +2021,15 @@ private:
                     int rlen = _basic_client->read(buf, avail < (int)len ? avail : (int)len);
                     if (rlen <= 0)
                     {
+                        // Some clients (e.g. TinyGSM with AT modems) report available() from the
+                        // modem's pending byte count, so read() may return 0 before the data has
+                        // actually been transferred. Treat that as "no data yet" and let the caller
+                        // retry until its timeout, unless the read failed or the socket is gone.
+                        if (rlen == 0 && _basic_client->connected())
+                        {
+                            delay(1);
+                            return state;
+                        }
 #if defined(ENABLE_DEBUG)
                         char s_buffer[64];
                         snprintf_P(s_buffer, sizeof(s_buffer), PSTR("Error reading bytes from basic client. Write Error: %u"), (unsigned int)_basic_client->getWriteError());
